@@ -1,0 +1,1945 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RIPS Converter · 3374/2000 → 2275/2023</title>
+<meta name="description" content="Herramienta gratuita para convertir paquetes RIPS de Colombia del formato TXT (Resolución 3374/2000) al formato JSON exigido por la Resolución 2275/2023. 100% en el navegador, sus datos nunca salen de su computador.">
+<meta name="keywords" content="RIPS, RIPS Colombia, Resolución 2275, Resolución 3374, RIPS JSON, convertidor RIPS, MinSalud, facturación salud, IPS Colombia, SISPRO">
+<meta name="author" content="RIPS Converter">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#0066cc">
+<meta property="og:type" content="website">
+<meta property="og:title" content="RIPS Converter · TXT a JSON 2275/2023">
+<meta property="og:description" content="Convierte paquetes RIPS de Colombia del formato TXT (Res. 3374/2000) al JSON oficial (Res. 2275/2023). 100% offline en el navegador.">
+<meta property="og:locale" content="es_CO">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="RIPS Converter · TXT a JSON 2275/2023">
+<meta name="twitter:description" content="Convierte paquetes RIPS del formato TXT al JSON 2275/2023. 100% offline.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230066cc'/%3E%3Ctext x='32' y='42' font-family='Arial,sans-serif' font-size='28' font-weight='800' fill='white' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --primary: #0066cc;
+    --primary-dark: #004c99;
+    --primary-light: #e6f0fa;
+    --success: #1a9850;
+    --warning: #e08e00;
+    --danger: #cc2929;
+    --bg: #f4f6f9;
+    --panel: #ffffff;
+    --text: #1a2332;
+    --text-muted: #5a6b82;
+    --border: #dde4ee;
+    --border-dark: #c3cddb;
+    --shadow: 0 2px 8px rgba(20, 30, 50, 0.06);
+    --shadow-lg: 0 8px 24px rgba(20, 30, 50, 0.12);
+    --radius: 8px;
+    --radius-sm: 4px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: var(--font); background: var(--bg); color: var(--text); margin: 0; padding: 0; line-height: 1.5; }
+  header { background: linear-gradient(135deg, #004c99 0%, #0066cc 100%); color: white; padding: 20px 32px; box-shadow: var(--shadow-lg); }
+  .header-inner { max-width: 1280px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 24px; flex-wrap: wrap; }
+  .brand h1 { margin: 0 0 4px; font-size: 22px; font-weight: 600; letter-spacing: -0.3px; }
+  .brand .sub { font-size: 13px; opacity: 0.85; margin: 0; }
+  .brand-logo { display: inline-block; width: 44px; height: 44px; background: white; border-radius: 10px; color: var(--primary); font-weight: 800; font-size: 17px; text-align: center; line-height: 44px; margin-right: 14px; vertical-align: middle; }
+  .version-tag { background: rgba(255,255,255,0.18); padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 500; letter-spacing: 0.5px; }
+  main { max-width: 1280px; margin: 0 auto; padding: 28px 32px 80px; }
+  .step { background: var(--panel); border-radius: var(--radius); padding: 22px 26px; margin-bottom: 20px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+  .step-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .step-num { width: 32px; height: 32px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+  .step-title { margin: 0; font-size: 17px; }
+  .step-desc { margin: 2px 0 0; color: var(--text-muted); font-size: 13px; }
+  .dropzone { border: 2px dashed var(--border-dark); border-radius: var(--radius); padding: 40px 20px; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--bg); position: relative; }
+  .dropzone:hover, .dropzone.dragging { border-color: var(--primary); background: var(--primary-light); }
+  .dropzone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .dropzone .icon { font-size: 36px; color: var(--primary); display: block; margin-bottom: 8px; }
+  .dropzone .main-text { font-weight: 600; color: var(--text); font-size: 15px; }
+  .dropzone .sub-text { color: var(--text-muted); font-size: 12px; margin-top: 4px; }
+  .file-list { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 10px; }
+  .file-tag { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; background: #edf3fb; border: 1px solid var(--border); border-radius: 999px; font-size: 12px; }
+  .file-tag.ok { background: #e4f5ec; border-color: #9ad2b2; }
+  .file-tag.err { background: #fde5e5; border-color: #eaa6a6; }
+  .file-tag .type-badge { display: inline-block; font-weight: 700; color: white; background: var(--primary); width: 28px; height: 22px; border-radius: 4px; text-align: center; line-height: 22px; font-size: 11px; letter-spacing: 0.5px; }
+  .file-tag .fname { font-family: var(--mono); }
+  .file-tag .count { color: var(--text-muted); font-size: 11px; }
+  .file-tag .rm { cursor: pointer; color: var(--text-muted); font-size: 16px; line-height: 1; }
+  .file-tag .rm:hover { color: var(--danger); }
+  .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+  .field label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 5px; }
+  .field input, .field select { width: 100%; padding: 8px 12px; border: 1px solid var(--border-dark); border-radius: var(--radius-sm); font-size: 13px; background: white; font-family: var(--font); }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,102,204,0.12); }
+  .field .hint { display: block; font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+  details.advanced { margin-top: 18px; border-top: 1px solid var(--border); padding-top: 16px; }
+  details.advanced summary { cursor: pointer; font-weight: 600; color: var(--primary); font-size: 13px; user-select: none; }
+  details.advanced summary:hover { color: var(--primary-dark); }
+  .mapping-table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 14px; }
+  .mapping-table th, .mapping-table td { padding: 7px 10px; border: 1px solid var(--border); text-align: left; }
+  .mapping-table th { background: var(--bg); font-weight: 600; color: var(--text-muted); font-size: 11px; text-transform: uppercase; }
+  .mapping-table input { padding: 4px 8px; font-size: 12px; width: 100%; border: 1px solid var(--border-dark); border-radius: 3px; }
+  .mapping-table .old-code { font-family: var(--mono); background: #fff4e0; padding: 2px 6px; border-radius: 3px; font-size: 12px; }
+  .mapping-table .arrow { color: var(--text-muted); text-align: center; width: 30px; }
+  .btn-row { display: flex; gap: 10px; margin-top: 18px; flex-wrap: wrap; align-items: center; }
+  .btn { padding: 11px 22px; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.15s; font-family: var(--font); display: inline-flex; align-items: center; gap: 8px; }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover:not(:disabled) { background: var(--primary-dark); }
+  .btn-primary:disabled { background: #a0b5cc; cursor: not-allowed; }
+  .btn-secondary { background: white; color: var(--text); border: 1px solid var(--border-dark); }
+  .btn-secondary:hover { background: var(--bg); }
+  .btn-success { background: var(--success); color: white; }
+  .btn-success:hover { background: #157a42; }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+  .log { background: #0f172a; color: #e2e8f0; padding: 14px 18px; border-radius: var(--radius-sm); font-family: var(--mono); font-size: 12px; line-height: 1.55; max-height: 260px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word; }
+  .log .info { color: #93c5fd; } .log .ok { color: #86efac; } .log .warn { color: #fcd34d; } .log .err { color: #fca5a5; } .log .muted { color: #94a3b8; }
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .stat { background: var(--bg); border-radius: var(--radius-sm); padding: 14px 16px; border-left: 3px solid var(--primary); }
+  .stat .n { font-size: 22px; font-weight: 700; line-height: 1.1; }
+  .stat .lab { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px; margin-top: 2px; }
+  .results-list .factura-card { background: var(--bg); border: 1px solid var(--border); border-left: 4px solid var(--success); border-radius: var(--radius-sm); padding: 14px 18px; margin-top: 10px; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .factura-card.has-warn { border-left-color: var(--warning); }
+  .factura-card.has-err { border-left-color: var(--danger); }
+  .factura-card .meta { font-family: var(--mono); font-size: 13px; }
+  .factura-card .meta .n { font-weight: 700; color: var(--primary); }
+  .factura-card .meta .s { color: var(--text-muted); font-size: 11px; display: block; margin-top: 2px; font-family: var(--font); }
+  .factura-card .issues { font-size: 11px; color: var(--text-muted); }
+  .issue-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--warning); margin-right: 4px; vertical-align: middle; }
+  .issue-dot.err { background: var(--danger); }
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; z-index: 100; align-items: center; justify-content: center; }
+  .modal-backdrop.open { display: flex; }
+  .modal { background: white; width: 90%; max-width: 900px; max-height: 85vh; border-radius: var(--radius); display: flex; flex-direction: column; overflow: hidden; }
+  .modal-head { padding: 14px 20px; background: var(--primary); color: white; display: flex; justify-content: space-between; align-items: center; }
+  .modal-head h3 { margin: 0; font-size: 16px; }
+  .modal-head .close { cursor: pointer; font-size: 22px; line-height: 1; }
+  .modal-body { flex: 1; overflow: auto; padding: 0; }
+  .modal-body pre { margin: 0; padding: 20px; font-family: var(--mono); font-size: 12px; line-height: 1.6; background: #f8fafc; }
+  .empty-state { text-align: center; padding: 32px 16px; color: var(--text-muted); font-size: 13px; }
+  footer { text-align: center; padding: 20px; font-size: 12px; color: var(--text-muted); }
+  footer .credits strong { color: var(--primary); }
+  .alert { padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px; margin-top: 12px; border-left: 3px solid; }
+  .alert-info { background: #e6f0fa; border-color: var(--primary); color: #004a80; }
+  .alert-warn { background: #fff5e0; border-color: var(--warning); color: #80521a; }
+  .alert-err { background: #fde5e5; border-color: var(--danger); color: #801818; }
+  .hidden { display: none !important; }
+  .toggle { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13px; user-select: none; }
+  .toggle-switch { width: 36px; height: 20px; background: var(--border-dark); border-radius: 999px; position: relative; transition: 0.2s; }
+  .toggle-switch::after { content: ''; position: absolute; width: 16px; height: 16px; background: white; border-radius: 50%; top: 2px; left: 2px; transition: 0.2s; }
+  .toggle input:checked + .toggle-switch { background: var(--primary); }
+  .toggle input:checked + .toggle-switch::after { left: 18px; }
+  .toggle input { display: none; }
+  .ref-box { background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; margin-top: 10px; font-size: 11px; color: var(--text-muted); line-height: 1.6; }
+  .ref-box b { color: var(--text); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="brand">
+      <h1><span class="brand-logo">R</span>RIPS Converter</h1>
+      <p class="sub">Convierte archivos RIPS TXT (Res. 3374/2000) al formato JSON (Res. 2275/2023)</p>
+    </div>
+    <div class="version-tag">v2.3 · Offline · SISPRO</div>
+  </div>
+</header>
+
+<main>
+
+  <!-- STEP 1 : UPLOAD -->
+  <section class="step">
+    <div class="step-header">
+      <div class="step-num">1</div>
+      <div>
+        <h2 class="step-title">Cargar archivos TXT</h2>
+        <p class="step-desc">Arrastra todos los archivos del paquete RIPS (CT, AF, US, AC, AP, AU, AH, AN, AM, AT)</p>
+      </div>
+    </div>
+
+    <div class="dropzone" id="dropzone">
+      <input type="file" id="fileInput" multiple accept=".txt,.TXT">
+      <span class="icon">📂</span>
+      <div class="main-text">Arrastra los archivos aquí o haz clic para seleccionar</div>
+      <div class="sub-text">Formatos aceptados: .txt &middot; Codificación: Latin-1 / Windows-1252</div>
+    </div>
+
+    <div class="file-list" id="fileList"></div>
+
+    <div id="fileAlert" class="alert alert-warn hidden"></div>
+  </section>
+
+  <!-- STEP 2 : BASES MAESTRAS (OPCIONAL) -->
+  <section class="step">
+    <div class="step-header">
+      <div class="step-num">2</div>
+      <div>
+        <h2 class="step-title">Bases maestras (opcional)</h2>
+        <p class="step-desc">Archivos Excel con datos complementarios. Si no se cargan, la conversión funciona igual.</p>
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+      <div>
+        <h4 style="margin: 0 0 8px; font-size: 13px;">🩺 Base de Diagnósticos</h4>
+        <p style="font-size:11px; color:var(--text-muted); margin:0 0 8px;">Columnas: <b>NUM DOC</b> | <b>DX</b> (CIE-10). Rellena diagnósticos vacíos o genéricos (Z000) buscando por documento.</p>
+        <div class="dropzone" id="dropzoneDx" style="padding: 24px 16px;">
+          <input type="file" id="fileInputDx" accept=".xlsx,.xls">
+          <span class="icon" style="font-size: 28px;">📊</span>
+          <div class="main-text" style="font-size:13px;">Cargar base de DX</div>
+          <div class="sub-text">.xlsx — NUM DOC, DX</div>
+        </div>
+        <div id="dxStatus" class="alert alert-info hidden" style="margin-top:8px; font-size:12px;"></div>
+      </div>
+
+      <div>
+        <h4 style="margin: 0 0 8px; font-size: 13px;">🎂 Base de Fechas de Nacimiento</h4>
+        <p style="font-size:11px; color:var(--text-muted); margin:0 0 8px;">Columnas: <b>Identificación</b> | <b>Fech. Nac.</b> Si el usuario está, se usa esa fecha real. Si no, se aplica el cálculo por edad.</p>
+        <div class="dropzone" id="dropzoneFN" style="padding: 24px 16px;">
+          <input type="file" id="fileInputFN" accept=".xlsx,.xls">
+          <span class="icon" style="font-size: 28px;">📅</span>
+          <div class="main-text" style="font-size:13px;">Cargar base de Fech. Nac.</div>
+          <div class="sub-text">.xlsx — Identificación, Fech. Nac.</div>
+        </div>
+        <div id="fnStatus" class="alert alert-info hidden" style="margin-top:8px; font-size:12px;"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 3 : CONFIG -->
+  <section class="step">
+    <div class="step-header">
+      <div class="step-num">3</div>
+      <div>
+        <h2 class="step-title">Configuración</h2>
+        <p class="step-desc">Valores por defecto para campos que la Res. 2275 exige y no existen en la 3374</p>
+      </div>
+    </div>
+
+    <div class="config-grid">
+      <div class="field">
+        <label>País residencia (ISO-3166)</label>
+        <input type="text" id="cfgPaisRes" value="170" maxlength="3">
+        <span class="hint">Colombia = 170</span>
+      </div>
+      <div class="field">
+        <label>País origen</label>
+        <input type="text" id="cfgPaisOri" value="170" maxlength="3">
+      </div>
+      <div class="field">
+        <label>Modalidad atención (default)</label>
+        <select id="cfgModalidad">
+          <option value="01" selected>01 &mdash; Intramural</option>
+          <option value="02">02 &mdash; Extramural unidad móvil</option>
+          <option value="03">03 &mdash; Extramural domiciliaria</option>
+          <option value="04">04 &mdash; Extramural jornada de salud</option>
+          <option value="06">06 &mdash; Telemedicina interactiva</option>
+          <option value="07">07 &mdash; Telemedicina no interactiva</option>
+          <option value="08">08 &mdash; Telexperticia</option>
+          <option value="09">09 &mdash; Telemonitoreo</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Cod. servicio REPS (default)</label>
+        <input type="number" id="cfgCodServ" value="328" min="1">
+        <span class="hint">Código del servicio habilitado en REPS</span>
+      </div>
+      <div class="field">
+        <label>Hora default consulta</label>
+        <input type="time" id="cfgHoraCons" value="08:00">
+      </div>
+      <div class="field">
+        <label>Concepto recaudo consulta</label>
+        <select id="cfgConceptoC">
+          <option value="01">01 &mdash; Copago</option>
+          <option value="02" selected>02 &mdash; Cuota moderadora</option>
+          <option value="03">03 &mdash; Pago compartido PVS</option>
+          <option value="04">04 &mdash; Pago total por el usuario</option>
+          <option value="05">05 &mdash; No aplica pago moderador</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Concepto recaudo proc./med./otros</label>
+        <select id="cfgConceptoP">
+          <option value="01">01 &mdash; Copago</option>
+          <option value="02">02 &mdash; Cuota moderadora</option>
+          <option value="03">03 &mdash; Pago compartido PVS</option>
+          <option value="04">04 &mdash; Pago total por el usuario</option>
+          <option value="05" selected>05 &mdash; No aplica pago moderador</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Tipo doc. atendiente (default)</label>
+        <select id="cfgTipoDocProf">
+          <option value="CC" selected>CC</option>
+          <option value="CE">CE</option>
+          <option value="PA">PA</option>
+          <option value="PT">PT</option>
+          <option value="PE">PE</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Núm. doc. atendiente (default)</label>
+        <input type="text" id="cfgNumDocProf" value="0000000000">
+        <span class="hint">Se usa si el TXT no trae profesional</span>
+      </div>
+      <div class="field">
+        <label>Tipo nota</label>
+        <select id="cfgTipoNota">
+          <option value="" selected>Ninguno (null)</option>
+          <option value="NC">NC &mdash; Nota crédito</option>
+          <option value="ND">ND &mdash; Nota débito</option>
+          <option value="NA">NA &mdash; Nota ajuste RIPS</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Núm. nota</label>
+        <input type="text" id="cfgNumNota" value="">
+        <span class="hint">Vacío = null</span>
+      </div>
+      <div class="field">
+        <label>Incapacidad por defecto</label>
+        <select id="cfgIncap">
+          <option value="NO" selected>NO</option>
+          <option value="SI">SI</option>
+        </select>
+      </div>
+    </div>
+
+    <details class="advanced" open>
+      <summary>Mapeos de códigos 3374 → 2275 (SISPRO) &mdash; clic para revisar / editar</summary>
+
+      <div class="ref-box">
+        <b>Fuente:</b> tablas de referencia SISPRO &mdash; <code>RIPSCausaExternaVersion2</code>, <code>RIPSFinalidadConsultaVersion2</code>, <code>ModalidadAtencion</code>, <code>GrupoServicios</code>, <code>ViaIngresoUsuario</code>, <code>CondicionyDestinoUsuarioEgreso</code>, <code>TipoMedicamentoPOSVersion2</code>, <code>conceptoRecaudo</code>.<br>
+        Consulta oficial: <b>https://web.sispro.gov.co/WebPublico/Consultas/ConsultarReferenciaBasica.aspx</b>
+      </div>
+
+      <h4 style="margin-top:18px; margin-bottom:6px; font-size:13px;">Causa motivo atención / causa externa</h4>
+      <p style="font-size:12px; color:var(--text-muted); margin:0 0 6px;">Aplicable a AC (campo 9), AU (campo 8) y AH (campo 9). La tabla nueva usa códigos 21-39.</p>
+      <table class="mapping-table">
+        <thead><tr><th style="width:40%">3374 (antiguo)</th><th class="arrow"></th><th>2275 (SISPRO)</th></tr></thead>
+        <tbody id="mapCausaExt"></tbody>
+      </table>
+
+      <h4 style="margin-top:22px; margin-bottom:6px; font-size:13px;">Finalidad de consulta (AC campo 8) → finalidadTecnologiaSalud</h4>
+      <table class="mapping-table">
+        <thead><tr><th style="width:40%">3374 (antiguo)</th><th class="arrow"></th><th>2275 RIPSFinalidadConsultaVersion2</th></tr></thead>
+        <tbody id="mapFinalidadC"></tbody>
+      </table>
+
+      <h4 style="margin-top:22px; margin-bottom:6px; font-size:13px;">Finalidad procedimiento (AP campo 9) → finalidadTecnologiaSalud</h4>
+      <table class="mapping-table">
+        <thead><tr><th style="width:40%">3374 (antiguo)</th><th class="arrow"></th><th>2275 (SISPRO)</th></tr></thead>
+        <tbody id="mapFinalidadP"></tbody>
+      </table>
+
+      <h4 style="margin-top:22px; margin-bottom:6px; font-size:13px;">Vía de ingreso (AH campo 5) → viaIngresoServicioSalud</h4>
+      <table class="mapping-table">
+        <thead><tr><th style="width:40%">3374 (antiguo)</th><th class="arrow"></th><th>2275 ViaIngresoUsuario</th></tr></thead>
+        <tbody id="mapViaIng"></tbody>
+      </table>
+
+      <h4 style="margin-top:22px; margin-bottom:6px; font-size:13px;">Ámbito procedimiento (AP campo 8) → grupoServicios</h4>
+      <table class="mapping-table">
+        <thead><tr><th style="width:40%">Ámbito AP (antiguo)</th><th class="arrow"></th><th>2275 GrupoServicios</th></tr></thead>
+        <tbody id="mapAmbito"></tbody>
+      </table>
+
+      <h4 style="margin-top:22px; margin-bottom:6px; font-size:13px;">Condición egreso (AH campo 16) → condicionDestinoUsuarioEgreso</h4>
+      <table class="mapping-table">
+        <thead><tr><th style="width:40%">Estado salida (antiguo)</th><th class="arrow"></th><th>2275 CondicionyDestinoUsuarioEgreso</th></tr></thead>
+        <tbody id="mapDestEgreso"></tbody>
+      </table>
+
+      <h4 style="margin-top:22px; margin-bottom:6px; font-size:13px;">Destino urgencias (AU campo 13) → condicionDestinoUsuarioEgreso</h4>
+      <table class="mapping-table">
+        <thead><tr><th style="width:40%">Destino AU (antiguo)</th><th class="arrow"></th><th>2275 (SISPRO)</th></tr></thead>
+        <tbody id="mapDestUrg"></tbody>
+      </table>
+
+      <h4 style="margin-top:22px; margin-bottom:6px; font-size:13px;">Tipo usuario (US campo 4) → tipoUsuario</h4>
+      <table class="mapping-table">
+        <thead><tr><th style="width:40%">3374 (antiguo 1 dígito)</th><th class="arrow"></th><th>2275 (2 dígitos)</th></tr></thead>
+        <tbody id="mapTipoUser"></tbody>
+      </table>
+
+      <h4 style="margin-top:22px; margin-bottom:6px; font-size:13px;">Estimación fecha de nacimiento (US campos 9-10)</h4>
+      <div class="config-grid">
+        <div class="field">
+          <label>Mes/día por defecto</label>
+          <input type="text" id="cfgBirthMD" value="07-01" maxlength="5" placeholder="MM-DD">
+          <span class="hint">El TXT solo trae edad. Se calcula año = base − edad y se completa con MM-DD.</span>
+        </div>
+        <div class="field">
+          <label>Fecha base del cálculo</label>
+          <input type="date" id="cfgBirthBase">
+          <span class="hint">Generalmente la fecha de la factura (final del periodo). Si está vacío, hoy.</span>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- STEP 4 : PROCESS -->
+  <section class="step">
+    <div class="step-header">
+      <div class="step-num">4</div>
+      <div>
+        <h2 class="step-title">Procesar y descargar</h2>
+        <p class="step-desc">Se genera un archivo JSON por cada factura. También puedes descargarlos todos en un ZIP.</p>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btnProcess" disabled>⚙️ Convertir a JSON</button>
+      <button class="btn btn-secondary" id="btnClear">Limpiar todo</button>
+      <div style="flex:1"></div>
+      <label class="toggle" title="Incluye arreglos vacíos en lugar de omitirlos">
+        <input type="checkbox" id="cfgKeepEmpty">
+        <span class="toggle-switch"></span>
+        <span>Incluir arreglos vacíos</span>
+      </label>
+    </div>
+
+    <div id="stats" class="stats-row hidden"></div>
+
+    <h4 style="margin-top:20px; margin-bottom:6px; font-size:14px;">Bitácora</h4>
+    <div class="log" id="log">Esperando archivos...</div>
+
+    <div id="resultsWrap" class="hidden" style="margin-top:22px;">
+      <h4 style="margin-bottom:6px; font-size:14px;">Facturas procesadas</h4>
+      <div class="btn-row" style="margin-top:8px; margin-bottom:10px;">
+        <button class="btn btn-success btn-sm" id="btnDownloadZip">⬇ Descargar TODOS en ZIP</button>
+        <button class="btn btn-success btn-sm" id="btnDownloadAll">⬇ Descargar uno a uno</button>
+        <button class="btn btn-secondary btn-sm" id="btnExportLog">⬇ Exportar bitácora</button>
+      </div>
+      <div class="results-list" id="resultsList"></div>
+    </div>
+  </section>
+
+  <!-- STEP 5 : JSON ↔ EXCEL (UTILIDAD) -->
+  <section class="step">
+    <div class="step-header">
+      <div class="step-num">5</div>
+      <div>
+        <h2 class="step-title">Conversión JSON ↔ Excel (utilidad extra)</h2>
+        <p class="step-desc">Convierte JSON 2275 a Excel para revisar/editar, o un Excel pre-formateado de vuelta a JSON.</p>
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+      <div>
+        <h4 style="margin:0 0 8px; font-size:13px;">📤 JSON → Excel</h4>
+        <p style="font-size:11px; color:var(--text-muted); margin:0 0 8px;">Cargue uno o varios JSON 2275 y se generará un Excel con hojas separadas (Usuarios, Consultas, Procedimientos, etc.).</p>
+        <div class="dropzone" id="dropzoneJson" style="padding:24px 16px;">
+          <input type="file" id="fileInputJson" multiple accept=".json">
+          <span class="icon" style="font-size:28px;">📄</span>
+          <div class="main-text" style="font-size:13px;">Cargar JSON(s)</div>
+          <div class="sub-text">.json — múltiple permitido</div>
+        </div>
+        <div id="jsonStatus" style="margin-top:8px; font-size:12px; color:var(--text-muted);">Sin archivos cargados.</div>
+        <button class="btn btn-success btn-sm" id="btnJsonToXlsx" style="margin-top:8px;" disabled>⬇ Descargar Excel</button>
+      </div>
+
+      <div>
+        <h4 style="margin:0 0 8px; font-size:13px;">📥 Excel → JSON</h4>
+        <p style="font-size:11px; color:var(--text-muted); margin:0 0 8px;">Cargue un Excel con el formato de la plantilla. Se reconstruyen los JSON 2275 (uno por factura) en un ZIP.</p>
+        <div class="btn-row" style="margin: 0 0 8px;">
+          <button class="btn btn-secondary btn-sm" id="btnTemplateXlsx">📋 Descargar plantilla vacía</button>
+        </div>
+        <div class="dropzone" id="dropzoneXlsx" style="padding:24px 16px;">
+          <input type="file" id="fileInputXlsx" accept=".xlsx,.xls">
+          <span class="icon" style="font-size:28px;">📊</span>
+          <div class="main-text" style="font-size:13px;">Cargar Excel con datos</div>
+          <div class="sub-text">.xlsx — hojas Usuarios, Consultas, etc.</div>
+        </div>
+        <div id="xlsxStatus" style="margin-top:8px; font-size:12px; color:var(--text-muted);">Sin archivo cargado.</div>
+        <button class="btn btn-success btn-sm" id="btnXlsxToJson" style="margin-top:8px;" disabled>⬇ Descargar JSON(s) en ZIP</button>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<div class="modal-backdrop" id="modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="modalTitle">Vista previa JSON</h3>
+      <span class="close" onclick="closeModal()">×</span>
+    </div>
+    <div class="modal-body"><pre id="modalBody"></pre></div>
+  </div>
+</div>
+
+<footer>
+  <div class="credits">
+    <strong>RIPS Converter v2.3</strong> &middot; Cumple Resolución 2275/2023 Ministerio de Salud Colombia &middot; Basado en tablas SISPRO<br>
+    100% procesamiento local · No envía datos a servidores externos · Codificación Latin-1 soportada
+  </div>
+</footer>
+
+<script>
+/* =============================================================================
+   RIPS CONVERTER v2.0 · Resolución 3374/2000 (TXT) → Resolución 2275/2023 (JSON)
+   Incluye: AC, AP, AU, AH, AN, AM, AT. Mapeos SISPRO. Descarga ZIP.
+============================================================================= */
+
+/* -------- REFERENCIA: ESPECIFICACIONES DE COLUMNAS (Res 3374/2000) -------- */
+const SPEC = {
+  CT: { cols: 4,  fields: ['codPrestador','fechaRemision','codArchivo','totalRegistros'] },
+  AF: { cols: 17, fields: ['codPrestador','razonSocial','tipoIdPrestador','numIdPrestador','numFactura','fechaExpFactura','fechaIniPeriodo','fechaFinPeriodo','codEAPB','nomEAPB','numContrato','planBenef','numPoliza','valorCopago','valorComision','valorDescuentos','valorNeto'] },
+  US: { cols: 14, fields: ['tipoIdUsuario','numIdUsuario','codEAPB','tipoUsuario','primerApellido','segundoApellido','primerNombre','segundoNombre','edad','unidadEdad','sexo','codDepartamento','codMunicipio','zonaResidencia'] },
+  AC: { cols: 17, fields: ['numFactura','codPrestador','tipoIdUsuario','numIdUsuario','fechaConsulta','numAutorizacion','codConsulta','finalidadConsulta','causaExterna','dxPrincipal','dxRel1','dxRel2','dxRel3','tipoDxPrincipal','valorConsulta','valorCuotaMod','valorNetoPagar'] },
+  AP: { cols: 15, fields: ['numFactura','codPrestador','tipoIdUsuario','numIdUsuario','fechaProcedimiento','numAutorizacion','codProcedimiento','ambito','finalidad','personal','dxPrincipal','dxRelacionado','complicacion','formaRealizacion','valorProcedimiento'] },
+  AU: { cols: 17, fields: ['numFactura','codPrestador','tipoIdUsuario','numIdUsuario','fechaIngreso','horaIngreso','numAutorizacion','causaExterna','dxSalida','dxRelSalida1','dxRelSalida2','dxRelSalida3','destino','estadoSalida','causaMuerte','fechaSalida','horaSalida'] },
+  AH: { cols: 19, fields: ['numFactura','codPrestador','tipoIdUsuario','numIdUsuario','viaIngreso','fechaIngreso','horaIngreso','numAutorizacion','causaExterna','dxIngreso','dxEgreso','dxRelEgreso1','dxRelEgreso2','dxRelEgreso3','dxComplicacion','estadoSalida','causaMuerte','fechaEgreso','horaEgreso'] },
+  AN: { cols: 14, fields: ['numFactura','codPrestador','tipoIdMadre','numIdMadre','fechaNacimiento','horaNacimiento','edadGestacional','controlPrenatal','sexo','peso','dxRN','causaMuerte','fechaMuerte','horaMuerte'] },
+  AM: { cols: 14, fields: ['numFactura','codPrestador','tipoIdUsuario','numIdUsuario','numAutorizacion','codMedicamento','tipoMedicamento','nombreGenerico','formaFarmaceutica','concentracion','unidadMedida','numUnidades','valorUnitario','valorTotal'] },
+  AT: { cols: 11, fields: ['numFactura','codPrestador','tipoIdUsuario','numIdUsuario','numAutorizacion','tipoServicio','codServicio','nombreServicio','cantidad','valorUnitario','valorTotal'] }
+};
+
+/* -------- Mapeos por defecto (validados contra SISPRO tablas de referencia) -------- */
+const DEFAULT_MAPS = {
+  // RIPSCausaExternaVersion2 — nuevos códigos 21-39
+  causaExt: {
+    '01': '21', // Accidente de trabajo
+    '02': '23', // Accidente de tránsito (origen común)
+    '03': '26', // Accidente rábico → Otro tipo de accidente
+    '04': '26', // Accidente ofídico → Otro tipo de accidente
+    '05': '26', // Otro tipo de accidente
+    '06': '27', // Evento catastrófico (natural)
+    '07': '28', // Lesión por agresión
+    '08': '29', // Lesión auto infligida
+    '09': '30', // Sosp. maltrato físico → Sosp. violencia física
+    '10': '32', // Sosp. abuso sexual → Sosp. violencia sexual
+    '11': '32', // Sosp. violencia sexual
+    '12': '31', // Sosp. maltrato emocional → Sosp. violencia psicológica
+    '13': '38', // Enfermedad general
+    '14': '39', // Enfermedad profesional/laboral
+    '15': '26'  // Otra → Otro tipo de accidente (por defecto)
+  },
+  // RIPSFinalidadConsultaVersion2 — consultas
+  finalidadC: {
+    '01': '15', // Atención parto → Atención del parto y puerperio
+    '02': '16', // Atención RN → Seguimiento recién nacido
+    '03': '13', // Planificación familiar → Planificación familiar y anticoncepción
+    '04': '11', // Det <10a → Valoración integral para promoción y mantenimiento
+    '05': '11', // Det joven
+    '06': '14', // Det embarazo → Atención para el cuidado prenatal
+    '07': '11', // Det adulto
+    '08': '11', // Agudeza visual
+    '09': '22', // Enf profesional → Det. temprana enf. laboral
+    '10': '44'  // No aplica → Tratamiento
+  },
+  // finalidadTecnologiaSalud para procedimientos
+  finalidadP: {
+    '1': '02', // Diagnóstico
+    '2': '44', // Terapéutico → Tratamiento
+    '3': '20', // Protección específica
+    '4': '18', // Det. temprana enf. general
+    '5': '22'  // Det. temprana enf. profesional/laboral
+  },
+  // ViaIngresoUsuario
+  viaIngreso: {
+    '1': '03', // Urgencias → Remitido urgencias
+    '2': '02', // Consulta externa → Remitido consulta externa
+    '3': '13', // Remitido → Referido de otra institución
+    '4': '07'  // Nacido institución → Nacido en la institución
+  },
+  // grupoServicios según ámbito procedimiento
+  ambito: {
+    '1': '02', // Ambulatorio → Apoyo diagnóstico (o 01 consulta externa)
+    '2': '03', // Hospitalario → Internación
+    '3': '05'  // Urgencias → Atención inmediata
+  },
+  // CondicionyDestinoUsuarioEgreso (AH)
+  destEgreso: {
+    '1': '01', // Vivo → Paciente con destino a su domicilio
+    '2': '02'  // Muerto → Paciente muerto
+  },
+  // CondicionyDestinoUsuarioEgreso (AU)
+  destUrgencias: {
+    '1': '01', // Alta urgencias → Alta médica
+    '2': '02', // Remisión otro nivel → Remisión a otro prestador
+    '3': '03'  // Hospitalización → Hospitalización
+  },
+  // tipoUsuario 3374 (1 dígito) → 2275 (2 dígitos)
+  tipoUser: {
+    '1': '01', // Contributivo → Contributivo cotizante
+    '2': '04', // Subsidiado
+    '3': '05', // Vinculado → No afiliado
+    '4': '12', // Particular
+    '5': '12'  // Otro → Particular
+  }
+};
+
+const LABELS = {
+  causaExt: {
+    '01':'Acc trabajo','02':'Acc tránsito','03':'Acc rábico','04':'Acc ofídico','05':'Otro accidente',
+    '06':'Evento catastrófico','07':'Lesión agresión','08':'Lesión auto infligida','09':'Sosp maltrato físico',
+    '10':'Sosp abuso sexual','11':'Sosp violencia sexual','12':'Sosp maltrato emocional','13':'Enf general',
+    '14':'Enf profesional','15':'Otra'
+  },
+  finalidadC: {
+    '01':'Atención parto','02':'Atención RN','03':'Planificación familiar','04':'Det <10a','05':'Det joven',
+    '06':'Det embarazo','07':'Det adulto','08':'Agudeza visual','09':'Enf profesional','10':'No aplica'
+  },
+  finalidadP: {'1':'Diagnóstico','2':'Terapéutico','3':'Prot. específica','4':'Det temprana general','5':'Det enf profesional'},
+  viaIngreso: {'1':'Urgencias','2':'Consulta ext/program','3':'Remitido','4':'Nacido institución'},
+  ambito: {'1':'Ambulatorio','2':'Hospitalario','3':'Urgencias'},
+  destEgreso: {'1':'Vivo (→ Alta)','2':'Muerto'},
+  destUrgencias: {'1':'Alta urgencias','2':'Remisión otro nivel','3':'Hospitalización'},
+  tipoUser: {'1':'Contributivo','2':'Subsidiado','3':'Vinculado','4':'Particular','5':'Otro'}
+};
+
+/* ======== STATE ======== */
+const STATE = {
+  files: {},
+  maps: JSON.parse(JSON.stringify(DEFAULT_MAPS)),
+  results: [],
+  logBuf: [],
+  dxDB: new Map(),       // numDoc -> [dx1,dx2,dx3,dx4]
+  fnDB: new Map(),       // numDoc -> 'YYYY-MM-DD'
+  jsonInputs: [],        // for JSON->Excel
+  xlsxInput: null        // for Excel->JSON
+};
+
+/* ======== LOG ======== */
+function log(msg, level='muted') {
+  const ts = new Date().toLocaleTimeString('es-CO');
+  STATE.logBuf.push({ ts, msg, level });
+  const el = document.getElementById('log');
+  el.innerHTML = STATE.logBuf.map(e => `<span class="muted">[${e.ts}]</span> <span class="${e.level}">${escHtml(e.msg)}</span>`).join('\n');
+  el.scrollTop = el.scrollHeight;
+}
+function logClear() { STATE.logBuf = []; document.getElementById('log').innerHTML = 'Esperando archivos...'; }
+function escHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ======== FILE UPLOAD ======== */
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+dropzone.addEventListener('click', () => fileInput.click());
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragging'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragging'));
+dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('dragging'); handleFiles(e.dataTransfer.files); });
+fileInput.addEventListener('change', e => handleFiles(e.target.files));
+
+function detectFileType(filename) {
+  const base = filename.toUpperCase().replace(/\.TXT$/, '');
+  const prefixes = ['CT','AF','US','AC','AP','AU','AH','AN','AM','AT','AD'];
+  for (const p of prefixes) if (base.startsWith(p)) return p;
+  return null;
+}
+async function readLatin1(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsText(file, 'windows-1252');
+  });
+}
+function parseLines(text) { return text.split(/\r?\n/).filter(l => l.trim().length > 0); }
+function parseRow(line) { return line.split(',').map(v => v.trim()); }
+
+async function handleFiles(fileList) {
+  const files = Array.from(fileList);
+  for (const f of files) {
+    const type = detectFileType(f.name);
+    if (!type) { log(`✗ ${f.name}: tipo no reconocido`, 'err'); continue; }
+    try {
+      const raw = await readLatin1(f);
+      const lines = parseLines(raw);
+      const rows = lines.map(parseRow);
+      STATE.files[type] = { name: f.name, type, count: rows.length, rows, raw };
+      log(`✓ ${f.name} (${type}) — ${rows.length} registros cargados`, 'ok');
+    } catch (err) { log(`✗ ${f.name}: ${err.message}`, 'err'); }
+  }
+  renderFiles();
+  validateFileSet();
+}
+
+function renderFiles() {
+  const list = document.getElementById('fileList');
+  const entries = Object.values(STATE.files);
+  if (entries.length === 0) { list.innerHTML = ''; return; }
+  list.innerHTML = entries.map(f => {
+    const expected = SPEC[f.type]?.cols;
+    const actual = f.rows[0]?.length;
+    const sizeOk = !expected || actual === expected || (f.type === 'AC' && (actual === 15 || actual === 17));
+    return `<div class="file-tag ${sizeOk ? 'ok' : 'err'}">
+      <span class="type-badge">${f.type}</span>
+      <span class="fname">${escHtml(f.name)}</span>
+      <span class="count">${f.count}</span>
+      <span class="rm" onclick="removeFile('${f.type}')" title="Quitar">×</span>
+    </div>`;
+  }).join('');
+}
+window.removeFile = (type) => { delete STATE.files[type]; renderFiles(); validateFileSet(); };
+
+function validateFileSet() {
+  const alert = document.getElementById('fileAlert');
+  const btn = document.getElementById('btnProcess');
+  const keys = Object.keys(STATE.files);
+  const hasAF = keys.includes('AF');
+  const hasUS = keys.includes('US');
+  const hasService = ['AC','AP','AU','AH','AN','AM','AT'].some(k => keys.includes(k));
+  if (keys.length === 0) { alert.classList.add('hidden'); btn.disabled = true; return; }
+  if (!hasAF) { alert.className='alert alert-err'; alert.textContent='⚠ Falta el archivo AF (Transacciones). Es obligatorio.'; alert.classList.remove('hidden'); btn.disabled=true; return; }
+  if (!hasUS) { alert.className='alert alert-err'; alert.textContent='⚠ Falta el archivo US (Usuarios). Es obligatorio.'; alert.classList.remove('hidden'); btn.disabled=true; return; }
+  if (!hasService) { alert.className='alert alert-warn'; alert.textContent='⚠ No se detectó ningún archivo de servicios (AC, AP, AU, AH, AN, AM, AT). El JSON tendrá "servicios" vacío.'; alert.classList.remove('hidden'); btn.disabled=false; return; }
+  alert.className = 'alert alert-info';
+  alert.textContent = `✓ Archivos listos: ${keys.join(', ')}`;
+  alert.classList.remove('hidden'); btn.disabled = false;
+}
+
+/* ======== MAPPING TABLES UI ======== */
+function renderMapTables() {
+  const render = (id, group) => {
+    const rows = Object.entries(STATE.maps[group]).map(([old, nw]) => {
+      const lab = LABELS[group][old] || '';
+      return `<tr>
+        <td><span class="old-code">${old}</span> <span style="color:var(--text-muted); font-size:11px;">${escHtml(lab)}</span></td>
+        <td class="arrow">→</td>
+        <td><input type="text" value="${nw}" maxlength="2" data-g="${group}" data-o="${old}" onchange="updateMap(this)"></td>
+      </tr>`;
+    }).join('');
+    document.getElementById(id).innerHTML = rows;
+  };
+  render('mapCausaExt', 'causaExt');
+  render('mapFinalidadC', 'finalidadC');
+  render('mapFinalidadP', 'finalidadP');
+  render('mapViaIng', 'viaIngreso');
+  render('mapAmbito', 'ambito');
+  render('mapDestEgreso', 'destEgreso');
+  render('mapDestUrg', 'destUrgencias');
+  render('mapTipoUser', 'tipoUser');
+}
+window.updateMap = (input) => { STATE.maps[input.dataset.g][input.dataset.o] = input.value.trim(); };
+
+/* ======== HELPERS ======== */
+function pad2(s) { return String(s).padStart(2, '0'); }
+function safe(v) { return v === undefined || v === null ? '' : String(v).trim(); }
+function emptyToNull(v) { const s = safe(v); return s === '' ? null : s; }
+function toInt(v) { const n = parseFloat(String(v).replace(/,/g,'')); return Number.isFinite(n) ? Math.round(n) : 0; }
+function toNum(v) { const n = parseFloat(String(v).replace(/,/g,'')); return Number.isFinite(n) ? n : 0; }
+
+function parseDateCO(s) {
+  if (!s) return null;
+  const m = String(s).match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (!m) return null;
+  return `${m[3]}-${pad2(m[2])}-${pad2(m[1])}`;
+}
+function parseDateTimeCO(date, time) {
+  const d = parseDateCO(date);
+  if (!d) return null;
+  const t = (time && /^\d{1,2}:\d{2}$/.test(time)) ? time.split(':').map(pad2).join(':') : '00:00';
+  return `${d} ${t}`;
+}
+
+function estimateBirthDate(edad, unidad, baseDate, defaultMD) {
+  const base = baseDate || new Date();
+  const ed = parseInt(edad, 10);
+  if (!Number.isFinite(ed) || ed < 0) return null;
+  let year;
+  if (unidad === '1') year = base.getFullYear() - ed;
+  else if (unidad === '2') year = base.getFullYear();
+  else if (unidad === '3') year = base.getFullYear();
+  else year = base.getFullYear() - ed;
+  const [mm, dd] = (defaultMD || '07-01').split('-');
+  return `${year}-${pad2(mm)}-${pad2(dd)}`;
+}
+function userAgeToBirth(edad, unidad, cfg) {
+  let base = null;
+  if (cfg.birthBase) base = new Date(cfg.birthBase + 'T00:00:00');
+  if (!base && cfg.periodEnd) base = new Date(cfg.periodEnd + 'T00:00:00');
+  if (!base) base = new Date();
+  return estimateBirthDate(edad, unidad, base, cfg.birthMD);
+}
+
+function buildMpio(dpto, mpio) {
+  const d = pad2(dpto || ''), m = String(mpio || '').padStart(3, '0');
+  if (!d || !m || d === '00' || m === '000') return null;
+  return d + m;
+}
+function mapZona(z) {
+  const v = safe(z).toUpperCase();
+  if (v === 'U') return '01';
+  if (v === 'R') return '02';
+  return null;
+}
+function padTipoDx(v) {
+  const s = safe(v);
+  if (/^\d{1,2}$/.test(s)) return pad2(s);
+  return '02';
+}
+function sanitizeFilename(s) { return String(s).replace(/[^a-zA-Z0-9_\-]/g, '_'); }
+
+/* ======== XLSX HELPERS (SheetJS) ======== */
+async function readXlsx(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array', cellDates: true });
+        resolve(wb);
+      } catch (err) { reject(err); }
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function isGenericDx(dx) {
+  if (!dx) return true;
+  const s = String(dx).trim().toUpperCase();
+  if (s === '' || s === 'Z000' || s === 'Z00' || s === 'NULL' || s === 'NONE') return true;
+  return false;
+}
+
+function completeDxFromDB(numDoc, dxP, dxR1, dxR2, dxR3, warnings) {
+  // Si no hay base, devuelve lo que viene (con fallback Z000)
+  if (STATE.dxDB.size === 0) {
+    return {
+      dxP: (dxP && dxP.trim()) || 'Z000',
+      dxR1: (dxR1 && dxR1.trim()) ? dxR1 : null,
+      dxR2: (dxR2 && dxR2.trim()) ? dxR2 : null,
+      dxR3: (dxR3 && dxR3.trim()) ? dxR3 : null,
+      fromDB: false
+    };
+  }
+  const key = String(numDoc || '').trim();
+  const dbDxs = STATE.dxDB.get(key);
+  if (!dbDxs || dbDxs.length === 0) {
+    return {
+      dxP: (dxP && dxP.trim()) || 'Z000',
+      dxR1: (dxR1 && dxR1.trim()) ? dxR1 : null,
+      dxR2: (dxR2 && dxR2.trim()) ? dxR2 : null,
+      dxR3: (dxR3 && dxR3.trim()) ? dxR3 : null,
+      fromDB: false
+    };
+  }
+  const out = {
+    dxP: isGenericDx(dxP) ? dbDxs[0] : dxP.trim(),
+    dxR1: (dxR1 && dxR1.trim()) ? dxR1 : (dbDxs[1] || null),
+    dxR2: (dxR2 && dxR2.trim()) ? dxR2 : (dbDxs[2] || null),
+    dxR3: (dxR3 && dxR3.trim()) ? dxR3 : (dbDxs[3] || null),
+    fromDB: true
+  };
+  if (isGenericDx(dxP) && dbDxs[0] && warnings) {
+    warnings.push(`DX completado desde base maestra para doc ${key}: ${dbDxs[0]}`);
+  }
+  return out;
+}
+
+/* ======== CARGA DE BASES MAESTRAS ======== */
+function bindDropzone(zoneId, inputId, handler) {
+  const zone = document.getElementById(zoneId);
+  const input = document.getElementById(inputId);
+  if (!zone || !input) return;
+  zone.addEventListener('click', () => input.click());
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragging'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('dragging'));
+  zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('dragging'); handler(e.dataTransfer.files); });
+  input.addEventListener('change', e => handler(e.target.files));
+}
+
+async function loadDxDB(files) {
+  const file = files && files[0]; if (!file) return;
+  const stat = document.getElementById('dxStatus');
+  try {
+    stat.className = 'alert alert-info'; stat.classList.remove('hidden');
+    stat.textContent = '⏳ Leyendo ' + file.name + '...';
+    const wb = await readXlsx(file);
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+    STATE.dxDB = new Map();
+    const header = (rows[0] || []).map(h => String(h).trim().toUpperCase());
+    const idxDoc = header.findIndex(h => /NUM.*DOC|DOCUMENTO|IDENTIFIC|CEDULA/i.test(h));
+    const idxDx  = header.findIndex(h => /^DX$|DIAGNOST|DIAGNÓST|CIE/i.test(h));
+    if (idxDoc < 0 || idxDx < 0) throw new Error('No se hallaron columnas NUM DOC y DX en la primera fila.');
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      const doc = String(r[idxDoc] ?? '').trim();
+      const dx  = String(r[idxDx] ?? '').trim().toUpperCase();
+      if (!doc || !dx) continue;
+      if (STATE.dxDB.has(doc)) {
+        const arr = STATE.dxDB.get(doc);
+        if (!arr.includes(dx) && arr.length < 4) arr.push(dx);
+      } else {
+        STATE.dxDB.set(doc, [dx]);
+      }
+    }
+    stat.className = 'alert alert-info';
+    stat.innerHTML = `✓ Base de diagnósticos cargada: <b>${STATE.dxDB.size.toLocaleString('es-CO')}</b> documento(s) con DX.`;
+    log(`✓ Base DX cargada: ${STATE.dxDB.size} documentos (archivo: ${file.name})`, 'ok');
+  } catch (err) {
+    stat.className = 'alert alert-err'; stat.classList.remove('hidden');
+    stat.textContent = '✗ Error: ' + err.message;
+    log('✗ Error cargando base DX: ' + err.message, 'err');
+  }
+}
+
+async function loadFNDB(files) {
+  const file = files && files[0]; if (!file) return;
+  const stat = document.getElementById('fnStatus');
+  try {
+    stat.className = 'alert alert-info'; stat.classList.remove('hidden');
+    stat.textContent = '⏳ Leyendo ' + file.name + '...';
+    const wb = await readXlsx(file);
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
+    STATE.fnDB = new Map();
+    const header = (rows[0] || []).map(h => String(h).trim().toUpperCase());
+    const idxDoc = header.findIndex(h => /IDENTIF|NUM.*DOC|DOCUMENTO|CEDULA/i.test(h));
+    const idxFec = header.findIndex(h => /FEC.*NAC|NACIMIENTO|F.\s*NAC|^FECHA$|^FN$/i.test(h));
+    if (idxDoc < 0 || idxFec < 0) throw new Error('No se hallaron columnas Identificación y Fech. Nac.');
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      const doc = String(r[idxDoc] ?? '').trim();
+      const raw = r[idxFec];
+      if (!doc || raw === '' || raw == null) continue;
+      let fechaStr = null;
+      if (raw instanceof Date && !isNaN(raw)) {
+        fechaStr = `${raw.getFullYear()}-${pad2(raw.getMonth()+1)}-${pad2(raw.getDate())}`;
+      } else if (typeof raw === 'number') {
+        const d = XLSX.SSF.parse_date_code(raw);
+        if (d) fechaStr = `${d.y}-${pad2(d.m)}-${pad2(d.d)}`;
+      } else {
+        const s = String(raw).trim();
+        let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+        if (m) fechaStr = `${m[1]}-${pad2(m[2])}-${pad2(m[3])}`;
+        else {
+          m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+          if (m) fechaStr = `${m[3]}-${pad2(m[2])}-${pad2(m[1])}`;
+        }
+      }
+      if (fechaStr) STATE.fnDB.set(doc, fechaStr);
+    }
+    stat.className = 'alert alert-info';
+    stat.innerHTML = `✓ Base de fechas cargada: <b>${STATE.fnDB.size.toLocaleString('es-CO')}</b> documento(s) con fecha de nacimiento.`;
+    log(`✓ Base FN cargada: ${STATE.fnDB.size} documentos (archivo: ${file.name})`, 'ok');
+  } catch (err) {
+    stat.className = 'alert alert-err'; stat.classList.remove('hidden');
+    stat.textContent = '✗ Error: ' + err.message;
+    log('✗ Error cargando base FN: ' + err.message, 'err');
+  }
+}
+
+/* =============== MAIN CONVERTER =============== */
+function convert() {
+  STATE.results = [];
+  logClear();
+
+  const cfg = {
+    paisRes: safe(document.getElementById('cfgPaisRes').value) || '170',
+    paisOri: safe(document.getElementById('cfgPaisOri').value) || '170',
+    modalidad: document.getElementById('cfgModalidad').value,
+    codServ: parseInt(document.getElementById('cfgCodServ').value, 10) || 328,
+    horaCons: document.getElementById('cfgHoraCons').value || '08:00',
+    conceptoC: document.getElementById('cfgConceptoC').value,
+    conceptoP: document.getElementById('cfgConceptoP').value,
+    tipoDocProf: document.getElementById('cfgTipoDocProf').value,
+    numDocProf: safe(document.getElementById('cfgNumDocProf').value) || '0000000000',
+    tipoNota: document.getElementById('cfgTipoNota').value || null,
+    numNota: safe(document.getElementById('cfgNumNota').value) || null,
+    incap: document.getElementById('cfgIncap').value,
+    birthMD: document.getElementById('cfgBirthMD').value || '07-01',
+    birthBase: document.getElementById('cfgBirthBase').value || null,
+    keepEmpty: document.getElementById('cfgKeepEmpty').checked
+  };
+
+  log('─ Iniciando conversión ─', 'info');
+
+  const af = STATE.files.AF?.rows || [];
+  if (af.length === 0) { log('No hay AF. Abortando.', 'err'); return; }
+  const us = STATE.files.US?.rows || [];
+  if (us.length === 0) { log('No hay US. Abortando.', 'err'); return; }
+
+  const facturasMap = new Map();
+  for (const r of af) {
+    const nf = r[4];
+    if (!nf) continue;
+    if (!facturasMap.has(nf)) facturasMap.set(nf, r);
+  }
+  log(`Facturas detectadas en AF: ${facturasMap.size}`, 'info');
+
+  const byFactAC = indexServicesByFactura(STATE.files.AC?.rows, 'AC');
+  const byFactAP = indexServicesByFactura(STATE.files.AP?.rows, 'AP');
+  const byFactAU = indexServicesByFactura(STATE.files.AU?.rows, 'AU');
+  const byFactAH = indexServicesByFactura(STATE.files.AH?.rows, 'AH');
+  const byFactAN = indexServicesByFactura(STATE.files.AN?.rows, 'AN');
+  const byFactAM = indexServicesByFactura(STATE.files.AM?.rows, 'AM');
+  const byFactAT = indexServicesByFactura(STATE.files.AT?.rows, 'AT');
+
+  const usersIndex = buildUsersIndex(us);
+  log(`Usuarios en US: ${usersIndex.size}`, 'info');
+
+  for (const [numFactura, afRow] of facturasMap.entries()) {
+    cfg.periodEnd = parseDateCO(afRow[7]);
+    const res = buildFacturaJSON(numFactura, afRow, usersIndex, {
+      AC: byFactAC.get(numFactura) || [],
+      AP: byFactAP.get(numFactura) || [],
+      AU: byFactAU.get(numFactura) || [],
+      AH: byFactAH.get(numFactura) || [],
+      AN: byFactAN.get(numFactura) || [],
+      AM: byFactAM.get(numFactura) || [],
+      AT: byFactAT.get(numFactura) || []
+    }, cfg);
+    STATE.results.push(res);
+  }
+
+  renderStats();
+  renderResults();
+  document.getElementById('resultsWrap').classList.remove('hidden');
+  log(`─ Conversión completada: ${STATE.results.length} factura(s) ─`, 'ok');
+}
+
+function indexServicesByFactura(rows, type) {
+  const idx = new Map();
+  if (!rows) return idx;
+  for (const r of rows) {
+    const nf = r[0];
+    if (!nf) continue;
+    if (!idx.has(nf)) idx.set(nf, []);
+    idx.get(nf).push(r);
+  }
+  if (rows && rows.length) log(`${type}: ${rows.length} registros en ${idx.size} factura(s)`, 'muted');
+  return idx;
+}
+function buildUsersIndex(usRows) {
+  const idx = new Map();
+  for (const r of usRows) {
+    const tipo = safe(r[0]), num = safe(r[1]);
+    if (!tipo || !num) continue;
+    idx.set(`${tipo}|${num}`, r);
+  }
+  return idx;
+}
+
+function buildFacturaJSON(numFactura, afRow, usersIndex, svcs, cfg) {
+  const warnings = [], errors = [];
+  const numDocumentoIdObligado = safe(afRow[3]);
+  const codPrestadorHabilit = safe(afRow[0]);
+
+  const usedUserKeys = new Set();
+  const collectUsers = (rows, tipoIdx, numIdx) => {
+    for (const r of rows) {
+      const k = `${safe(r[tipoIdx])}|${safe(r[numIdx])}`;
+      if (k !== '|') usedUserKeys.add(k);
+    }
+  };
+  collectUsers(svcs.AC, 2, 3);
+  collectUsers(svcs.AP, 2, 3);
+  collectUsers(svcs.AU, 2, 3);
+  collectUsers(svcs.AH, 2, 3);
+  collectUsers(svcs.AM, 2, 3);
+  collectUsers(svcs.AT, 2, 3);
+  // AN → usa identificación de la madre
+  collectUsers(svcs.AN, 2, 3);
+
+  if (usedUserKeys.size === 0) {
+    for (const k of usersIndex.keys()) usedUserKeys.add(k);
+    warnings.push('Ningún servicio referencia usuarios; se incluyeron todos los US.');
+  }
+
+  const usuarios = [];
+  let consec = 0;
+  for (const key of usedUserKeys) {
+    consec++;
+    const us = usersIndex.get(key);
+    if (!us) { errors.push(`Usuario ${key} no encontrado en US.`); continue; }
+    const tipoDoc = safe(us[0]);
+    const numDoc = safe(us[1]);
+    // Prioridad: base maestra de fechas. Fallback: cálculo por edad.
+    let fechaNac = STATE.fnDB.get(numDoc) || null;
+    if (fechaNac) {
+      log(`  ↳ Fecha de nacimiento desde base maestra: doc ${numDoc} → ${fechaNac}`, 'muted');
+    } else {
+      fechaNac = userAgeToBirth(us[8], us[9], cfg);
+    }
+    const sexo = safe(us[10]).toUpperCase();
+    const codSexo = (sexo === 'M' || sexo === 'F') ? sexo : 'M';
+    const codMpio = buildMpio(us[11], us[12]);
+    const zona = mapZona(us[13]);
+    const tipoUserOld = safe(us[3]);
+    const tipoUser2275 = STATE.maps.tipoUser[tipoUserOld] || (tipoUserOld.length === 1 ? pad2(tipoUserOld) : tipoUserOld) || '01';
+
+    const user = {
+      tipoDocumentoIdentificacion: tipoDoc || 'CC',
+      numDocumentoIdentificacion: numDoc,
+      tipoUsuario: tipoUser2275,
+      fechaNacimiento: fechaNac,
+      codSexo: codSexo,
+      codPaisResidencia: cfg.paisRes,
+      codMunicipioResidencia: codMpio,
+      codZonaTerritorialResidencia: zona,
+      incapacidad: cfg.incap,
+      consecutivo: consec,
+      codPaisOrigen: cfg.paisOri,
+      servicios: buildServiciosForUser(key, svcs, afRow, cfg, codPrestadorHabilit, warnings, errors)
+    };
+    usuarios.push(user);
+  }
+
+  const json = {
+    numDocumentoIdObligado: numDocumentoIdObligado,
+    numFactura: numFactura,
+    tipoNota: cfg.tipoNota,
+    numNota: cfg.numNota,
+    usuarios: usuarios
+  };
+
+  const filename = `RIPS_${sanitizeFilename(numFactura)}.json`;
+  log(`✓ ${filename} — ${usuarios.length} usuario(s), ${warnings.length} warning(s), ${errors.length} error(es)`, errors.length ? 'warn' : 'ok');
+  return { numFactura, json, warnings, errors, filename, codObligado: numDocumentoIdObligado, codPrestador: codPrestadorHabilit };
+}
+
+function filterUserServices(rows, key, tipoIdx, numIdx) {
+  return rows.filter(r => `${safe(r[tipoIdx])}|${safe(r[numIdx])}` === key);
+}
+
+function buildServiciosForUser(userKey, svcs, afRow, cfg, codPrestador, warnings, errors) {
+  const services = {};
+
+  const acRows = filterUserServices(svcs.AC, userKey, 2, 3);
+  if (acRows.length || cfg.keepEmpty) services.consultas = acRows.map((r, i) => buildConsulta(r, i+1, cfg, codPrestador, warnings));
+
+  const apRows = filterUserServices(svcs.AP, userKey, 2, 3);
+  if (apRows.length || cfg.keepEmpty) services.procedimientos = apRows.map((r, i) => buildProcedimiento(r, i+1, cfg, codPrestador, warnings));
+
+  const auRows = filterUserServices(svcs.AU, userKey, 2, 3);
+  if (auRows.length || cfg.keepEmpty) services.urgencias = auRows.map((r, i) => buildUrgencia(r, i+1, cfg, codPrestador, warnings));
+
+  const ahRows = filterUserServices(svcs.AH, userKey, 2, 3);
+  if (ahRows.length || cfg.keepEmpty) services.hospitalizacion = ahRows.map((r, i) => buildHospitalizacion(r, i+1, cfg, codPrestador, warnings));
+
+  const anRows = filterUserServices(svcs.AN, userKey, 2, 3);
+  if (anRows.length || cfg.keepEmpty) services.recienNacidos = anRows.map((r, i) => buildRecienNacido(r, i+1, cfg, codPrestador, warnings));
+
+  const amRows = filterUserServices(svcs.AM, userKey, 2, 3);
+  if (amRows.length || cfg.keepEmpty) services.medicamentos = amRows.map((r, i) => buildMedicamento(r, i+1, cfg, codPrestador, afRow, warnings));
+
+  const atRows = filterUserServices(svcs.AT, userKey, 2, 3);
+  if (atRows.length || cfg.keepEmpty) services.otrosServicios = atRows.map((r, i) => buildOtroServicio(r, i+1, cfg, codPrestador, afRow, warnings));
+
+  return services;
+}
+
+/* --- CONSULTA --- */
+function buildConsulta(r, consec, cfg, codPrestador, warnings) {
+  const fecha = parseDateCO(r[4]);
+  const fechaHora = fecha ? `${fecha} ${cfg.horaCons}` : null;
+  const finalidadOld = safe(r[7]);
+  const causaOld = safe(r[8]);
+  const finalidad = STATE.maps.finalidadC[finalidadOld] || '44';
+  const causa = STATE.maps.causaExt[causaOld] || '38';
+  const numDoc = safe(r[3]);
+  const dxs = completeDxFromDB(numDoc, safe(r[9]), safe(r[10]), safe(r[11]), safe(r[12]), warnings);
+  if (!safe(r[9])) warnings.push(`AC sin dxPrincipal (consec ${consec}). Se usó ${dxs.dxP}.`);
+  return {
+    codPrestador: codPrestador,
+    fechaInicioAtencion: fechaHora,
+    numAutorizacion: emptyToNull(r[5]),
+    codConsulta: safe(r[6]),
+    modalidadGrupoServicioTecSal: cfg.modalidad,
+    grupoServicios: '01',
+    codServicio: cfg.codServ,
+    finalidadTecnologiaSalud: finalidad,
+    causaMotivoAtencion: causa,
+    codDiagnosticoPrincipal: dxs.dxP,
+    codDiagnosticoRelacionado1: dxs.dxR1,
+    codDiagnosticoRelacionado2: dxs.dxR2,
+    codDiagnosticoRelacionado3: dxs.dxR3,
+    tipoDiagnosticoPrincipal: padTipoDx(r[13]),
+    tipoDocumentoIdentificacion: cfg.tipoDocProf,
+    numDocumentoIdentificacion: cfg.numDocProf,
+    vrServicio: toInt(r[14]),
+    conceptoRecaudo: cfg.conceptoC,
+    valorPagoModerador: toInt(r[15]),
+    numFEVPagoModerador: null,
+    consecutivo: consec
+  };
+}
+
+/* --- PROCEDIMIENTO --- */
+function buildProcedimiento(r, consec, cfg, codPrestador, warnings) {
+  const fecha = parseDateCO(r[4]);
+  const fechaHora = fecha ? `${fecha} ${cfg.horaCons}` : null;
+  const ambito = safe(r[7]);
+  const finalidadOld = safe(r[8]);
+  const grupo = STATE.maps.ambito[ambito] || '01';
+  const finalidad = STATE.maps.finalidadP[finalidadOld] || '44';
+  const via = ambito === '2' ? '04' : (ambito === '3' ? '03' : '01');
+  const numDoc = safe(r[3]);
+  const dxs = completeDxFromDB(numDoc, safe(r[10]), safe(r[11]), null, null, warnings);
+  return {
+    codPrestador: codPrestador,
+    fechaInicioAtencion: fechaHora,
+    idMIPRES: null,
+    numAutorizacion: emptyToNull(r[5]),
+    codProcedimiento: safe(r[6]),
+    viaIngresoServicioSalud: via,
+    modalidadGrupoServicioTecSal: cfg.modalidad,
+    grupoServicios: grupo,
+    codServicio: cfg.codServ,
+    finalidadTecnologiaSalud: finalidad,
+    tipoDocumentoIdentificacion: cfg.tipoDocProf,
+    numDocumentoIdentificacion: cfg.numDocProf,
+    codDiagnosticoPrincipal: dxs.dxP,
+    codDiagnosticoRelacionado: dxs.dxR1,
+    codComplicacion: emptyToNull(r[12]),
+    vrServicio: toInt(r[14]),
+    conceptoRecaudo: cfg.conceptoP,
+    valorPagoModerador: 0,
+    numFEVPagoModerador: null,
+    consecutivo: consec
+  };
+}
+
+/* --- URGENCIAS (AU) --- */
+function buildUrgencia(r, consec, cfg, codPrestador, warnings) {
+  const fechaIng = parseDateTimeCO(r[4], r[5]);
+  const causaOld = safe(r[7]);
+  const causa = STATE.maps.causaExt[causaOld] || '38';
+  const destinoOld = safe(r[12]);
+  const estadoOld = safe(r[13]);
+  const destino = STATE.maps.destUrgencias[destinoOld] || '01';
+  const causaMuerte = estadoOld === '2' ? safe(r[14]) : null;
+  const fechaEgr = parseDateTimeCO(r[15], r[16]);
+  const numDoc = safe(r[3]);
+  const dxs = completeDxFromDB(numDoc, safe(r[8]), safe(r[9]), safe(r[10]), safe(r[11]), warnings);
+  return {
+    codPrestador: codPrestador,
+    fechaInicioAtencion: fechaIng,
+    numAutorizacion: emptyToNull(r[6]),
+    causaMotivoAtencion: causa,
+    codDiagnosticoPrincipal: dxs.dxP,
+    codDiagnosticoPrincipalE: dxs.dxP,
+    codDiagnosticoRelacionadoE1: dxs.dxR1,
+    codDiagnosticoRelacionadoE2: dxs.dxR2,
+    codDiagnosticoRelacionadoE3: dxs.dxR3,
+    condicionDestinoUsuarioEgreso: destino,
+    codDiagnosticoCausaMuerte: emptyToNull(causaMuerte),
+    fechaEgreso: fechaEgr,
+    consecutivo: consec
+  };
+}
+
+/* --- HOSPITALIZACIÓN --- */
+function buildHospitalizacion(r, consec, cfg, codPrestador, warnings) {
+  const viaOld = safe(r[4]);
+  const via = STATE.maps.viaIngreso[viaOld] || '13';
+  const fechaIng = parseDateTimeCO(r[5], r[6]);
+  const causaOld = safe(r[8]);
+  const causa = STATE.maps.causaExt[causaOld] || '38';
+  const estadoOld = safe(r[15]);
+  const destino = STATE.maps.destEgreso[estadoOld] || '01';
+  const causaMuerte = estadoOld === '2' ? safe(r[16]) : null;
+  const fechaEgr = parseDateTimeCO(r[17], r[18]);
+  const numDoc = safe(r[3]);
+  const dxIng = safe(r[9]);
+  const dxEgr = safe(r[10]);
+  const dxs = completeDxFromDB(numDoc, dxIng, safe(r[11]), safe(r[12]), safe(r[13]), warnings);
+  const dxsE = completeDxFromDB(numDoc, dxEgr || dxIng, safe(r[11]), safe(r[12]), safe(r[13]), warnings);
+  return {
+    codPrestador: codPrestador,
+    viaIngresoServicioSalud: via,
+    fechaInicioAtencion: fechaIng,
+    numAutorizacion: emptyToNull(r[7]),
+    causaMotivoAtencion: causa,
+    codDiagnosticoPrincipal: dxs.dxP,
+    codDiagnosticoPrincipalE: dxsE.dxP,
+    codDiagnosticoRelacionadoE1: dxs.dxR1,
+    codDiagnosticoRelacionadoE2: dxs.dxR2,
+    codDiagnosticoRelacionadoE3: dxs.dxR3,
+    codComplicacion: emptyToNull(r[14]),
+    condicionDestinoUsuarioEgreso: destino,
+    codDiagnosticoCausaMuerte: emptyToNull(causaMuerte),
+    fechaEgreso: fechaEgr,
+    consecutivo: consec
+  };
+}
+
+/* --- RECIÉN NACIDO (AN) --- */
+function buildRecienNacido(r, consec, cfg, codPrestador, warnings) {
+  const fechaNac = parseDateTimeCO(r[4], r[5]);
+  const controlPrenatalOld = safe(r[7]);
+  const tieneControl = controlPrenatalOld === '1' ? 'SI' : 'NO';
+  const sexo = safe(r[8]).toUpperCase();
+  const codSexo = (sexo === 'M' || sexo === 'F') ? sexo : 'M';
+  const peso = toInt(r[9]);
+  const dxRN = safe(r[10]);
+  const causaMuerte = safe(r[11]);
+  const fechaMuerte = parseDateTimeCO(r[12], r[13]);
+  return {
+    codPrestador: codPrestador,
+    fechaNacimiento: fechaNac,
+    edadGestacional: toInt(r[6]),
+    numConsultasPrenatales: tieneControl === 'SI' ? 1 : 0,
+    codSexoBiologico: codSexo,
+    peso: peso,
+    codDiagnosticoPrincipal: dxRN || 'Z000',
+    condicionDestinoUsuarioEgreso: fechaMuerte ? '02' : '01',
+    codDiagnosticoCausaMuerte: emptyToNull(causaMuerte),
+    fechaEgreso: fechaMuerte || fechaNac,
+    consecutivo: consec
+  };
+}
+
+/* --- MEDICAMENTO --- */
+function buildMedicamento(r, consec, cfg, codPrestador, afRow, warnings) {
+  const tipoMed = safe(r[6]);
+  const mapTipo = {'1':'01','2':'02'};
+  const codTec = safe(r[5]);
+  const cantidad = toInt(r[11]);
+  const vrUnit = toNum(r[12]);
+  const vrTotal = toNum(r[13]);
+  const fecha = parseDateCO(afRow?.[5]);
+  const fechaHora = fecha ? `${fecha} ${cfg.horaCons}` : null;
+  const numDoc = safe(r[3]);
+  const dxs = completeDxFromDB(numDoc, '', '', null, null, warnings);
+  return {
+    codPrestador: codPrestador,
+    numAutorizacion: emptyToNull(r[4]),
+    idMIPRES: null,
+    fechaDispensAdmon: fechaHora,
+    codDiagnosticoPrincipal: dxs.dxP,
+    codDiagnosticoRelacionado: dxs.dxR1,
+    tipoMedicamento: mapTipo[tipoMed] || '01',
+    codTecnologiaSalud: codTec,
+    nomTecnologiaSalud: emptyToNull(r[7]),
+    concentracionMedicamento: toNum(r[9]) || 0,
+    unidadMedida: 0,
+    formaFarmaceutica: emptyToNull(r[8]),
+    unidadMinDispensa: 1,
+    cantidadMedicamento: cantidad,
+    diasTratamiento: 1,
+    tipoDocumentoIdentificacion: cfg.tipoDocProf,
+    numDocumentoIdentificacion: cfg.numDocProf,
+    vrUnitMedicamento: Math.round(vrUnit),
+    vrServicio: Math.round(vrTotal),
+    conceptoRecaudo: cfg.conceptoP,
+    valorPagoModerador: 0,
+    numFEVPagoModerador: null,
+    consecutivo: consec
+  };
+}
+
+/* --- OTROS SERVICIOS (AT) --- */
+function buildOtroServicio(r, consec, cfg, codPrestador, afRow, warnings) {
+  const tipoOld = safe(r[5]);
+  const tipoMap = {'1':'01','2':'02','3':'03','4':'04'};
+  const tipoOS = tipoMap[tipoOld] || '01';
+  const fecha = parseDateCO(afRow?.[5]);
+  const fechaHora = fecha ? `${fecha} ${cfg.horaCons}` : null;
+  return {
+    codPrestador: codPrestador,
+    numAutorizacion: emptyToNull(r[4]),
+    idMIPRES: null,
+    fechaSuministroTecnologia: fechaHora,
+    tipoOS: tipoOS,
+    codTecnologiaSalud: safe(r[6]),
+    nomTecnologiaSalud: emptyToNull(r[7]),
+    cantidadOS: toInt(r[8]),
+    tipoDocumentoIdentificacion: (tipoOS === '01' || tipoOS === '04') ? cfg.tipoDocProf : null,
+    numDocumentoIdentificacion: (tipoOS === '01' || tipoOS === '04') ? cfg.numDocProf : null,
+    vrUnitOS: Math.round(toNum(r[9])),
+    vrServicio: Math.round(toNum(r[10])),
+    conceptoRecaudo: cfg.conceptoP,
+    valorPagoModerador: 0,
+    numFEVPagoModerador: null,
+    consecutivo: consec
+  };
+}
+
+/* ======== STATS / RESULTS ======== */
+function renderStats() {
+  const wrap = document.getElementById('stats');
+  const totUsers = STATE.results.reduce((a, r) => a + r.json.usuarios.length, 0);
+  const countSvc = (type) => STATE.results.reduce((a, r) => a + r.json.usuarios.reduce((b, u) => b + ((u.servicios && u.servicios[type]) || []).length, 0), 0);
+  const totWarn = STATE.results.reduce((a, r) => a + r.warnings.length, 0);
+  const totErr = STATE.results.reduce((a, r) => a + r.errors.length, 0);
+  wrap.innerHTML = `
+    <div class="stat"><div class="n">${STATE.results.length}</div><div class="lab">Facturas</div></div>
+    <div class="stat"><div class="n">${totUsers}</div><div class="lab">Usuarios</div></div>
+    <div class="stat"><div class="n">${countSvc('consultas')}</div><div class="lab">Consultas</div></div>
+    <div class="stat"><div class="n">${countSvc('procedimientos')}</div><div class="lab">Procedim.</div></div>
+    <div class="stat"><div class="n">${countSvc('urgencias')}</div><div class="lab">Urgencias</div></div>
+    <div class="stat"><div class="n">${countSvc('hospitalizacion')}</div><div class="lab">Hospital.</div></div>
+    <div class="stat"><div class="n">${countSvc('recienNacidos')}</div><div class="lab">RN</div></div>
+    <div class="stat"><div class="n">${countSvc('medicamentos')}</div><div class="lab">Medicam.</div></div>
+    <div class="stat"><div class="n">${countSvc('otrosServicios')}</div><div class="lab">Otros serv.</div></div>
+    <div class="stat" style="border-left-color:${totErr ? 'var(--danger)' : totWarn ? 'var(--warning)' : 'var(--success)'}">
+      <div class="n">${totErr || totWarn || '✓'}</div>
+      <div class="lab">${totErr ? 'Errores' : totWarn ? 'Warnings' : 'OK'}</div>
+    </div>
+  `;
+  wrap.classList.remove('hidden');
+}
+
+function renderResults() {
+  const list = document.getElementById('resultsList');
+  if (STATE.results.length === 0) { list.innerHTML = '<div class="empty-state">No se generaron resultados.</div>'; return; }
+  list.innerHTML = STATE.results.map((r, i) => {
+    const hasErr = r.errors.length > 0, hasWarn = r.warnings.length > 0;
+    const cls = hasErr ? 'has-err' : hasWarn ? 'has-warn' : '';
+    const countUsers = r.json.usuarios.length;
+    return `
+      <div class="factura-card ${cls}">
+        <div class="meta">
+          <span class="n">📄 ${escHtml(r.numFactura)}</span>
+          <span class="s">${escHtml(r.filename)} · ${countUsers} usuario(s) · Obligado: ${escHtml(r.codObligado)}</span>
+        </div>
+        <div class="issues">
+          ${hasErr ? `<span class="issue-dot err"></span>${r.errors.length} error(es)` : ''}
+          ${hasWarn ? `<span class="issue-dot"></span>${r.warnings.length} warning(s)` : ''}
+          ${!hasErr && !hasWarn ? '<span style="color:var(--success)">✓ Sin incidencias</span>' : ''}
+        </div>
+        <div>
+          <button class="btn btn-secondary btn-sm" onclick="previewJson(${i})">👁 Ver</button>
+          <button class="btn btn-primary btn-sm" onclick="downloadJson(${i})">⬇ JSON</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+window.previewJson = (i) => {
+  const r = STATE.results[i];
+  document.getElementById('modalTitle').textContent = 'Vista previa · ' + r.filename;
+  document.getElementById('modalBody').textContent = JSON.stringify(r.json, null, 2);
+  document.getElementById('modal').classList.add('open');
+};
+window.closeModal = () => document.getElementById('modal').classList.remove('open');
+
+window.downloadJson = (i) => {
+  const r = STATE.results[i];
+  const blob = new Blob([JSON.stringify(r.json, null, 2)], { type: 'application/json;charset=utf-8' });
+  triggerDownload(blob, r.filename);
+  log(`⬇ Descarga: ${r.filename}`, 'info');
+};
+
+function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 100);
+}
+
+async function downloadZip() {
+  if (typeof JSZip === 'undefined') { alert('JSZip no cargó. Revisa tu conexión o usa "Descargar uno a uno".'); return; }
+  const zip = new JSZip();
+  for (const r of STATE.results) {
+    zip.file(r.filename, JSON.stringify(r.json, null, 2));
+  }
+  // bitácora
+  const txt = STATE.logBuf.map(e => `[${e.ts}] [${e.level.toUpperCase()}] ${e.msg}`).join('\n');
+  zip.file('bitacora.txt', txt);
+  const content = await zip.generateAsync({ type: 'blob' });
+  const stamp = new Date().toISOString().replace(/[:T]/g,'-').slice(0,19);
+  triggerDownload(content, `RIPS_JSON_${stamp}.zip`);
+  log(`⬇ ZIP generado con ${STATE.results.length} JSON(s)`, 'ok');
+}
+
+/* ======== BUTTONS ======== */
+document.getElementById('btnProcess').addEventListener('click', convert);
+document.getElementById('btnClear').addEventListener('click', () => {
+  STATE.files = {}; STATE.results = [];
+  renderFiles(); validateFileSet();
+  document.getElementById('resultsWrap').classList.add('hidden');
+  document.getElementById('stats').classList.add('hidden');
+  logClear();
+});
+document.getElementById('btnDownloadAll').addEventListener('click', () => {
+  STATE.results.forEach((_, i) => setTimeout(() => downloadJson(i), i * 150));
+});
+document.getElementById('btnDownloadZip').addEventListener('click', downloadZip);
+document.getElementById('btnExportLog').addEventListener('click', () => {
+  const txt = STATE.logBuf.map(e => `[${e.ts}] [${e.level.toUpperCase()}] ${e.msg}`).join('\n');
+  triggerDownload(new Blob([txt], { type: 'text/plain' }), 'RIPS-converter-bitacora.txt');
+});
+
+/* ======== BASES MAESTRAS · BIND ======== */
+bindDropzone('dropzoneDx', 'fileInputDx', loadDxDB);
+bindDropzone('dropzoneFN', 'fileInputFN', loadFNDB);
+
+/* ======== JSON ↔ EXCEL ======== */
+// Esquema de columnas (también sirve para la plantilla)
+/* ====== Helpers para preservar tipos de dato según Res. 2275/2023 ======
+   Muchos campos son tipo "cadena" (string) aunque parezcan numéricos
+   (ej: numAutorizacion, codDiagnostico, codTecnologia). Excel tiende a
+   auto-convertirlos. Estos helpers fuerzan el tipo correcto en ambos
+   sentidos (JSON->Excel y Excel->JSON). */
+const S = v => (v === null || v === undefined || v === '') ? null : String(v);
+const N = v => {
+  if (v === null || v === undefined || v === '') return null;
+  if (typeof v === 'number') return v;
+  const n = parseFloat(String(v).replace(/,/g,''));
+  return Number.isFinite(n) ? n : null;
+};
+
+/* Columnas que deben permanecer como CADENA (índices 0-based por hoja).
+   Las demás columnas serán números. */
+const STR_COLS_BY_SHEET = {
+  // Usuarios (15 cols): solo "consecutivo" (13) es número
+  Usuarios: [0,1,2,3,4,5,6,7,8,9,10,11,12,14],
+  // Consultas (23 cols): números = 8(codServ), 18(vrServ), 20(valorPagoMod), 22(consec)
+  Consultas: [0,1,2,3,4,5,6,7,9,10,11,12,13,14,15,16,17,19,21],
+  // Procedimientos (22 cols): números = 10(codServ), 17(vrServ), 19(valorPagoMod), 21(consec)
+  Procedimientos: [0,1,2,3,4,5,6,7,8,9,11,12,13,14,15,16,18,20],
+  // Urgencias (15 cols): número = 14(consec)
+  Urgencias: [0,1,2,3,4,5,6,7,8,9,10,11,12,13],
+  // Hospitalizacion (17 cols): número = 16(consec)
+  Hospitalizacion: [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
+  // RecienNacidos (13 cols): números = 4(edadGest), 5(numConsultPren), 7(peso), 12(consec). codSexoBiologico (6) es string.
+  RecienNacidos: [0,1,2,3,6,8,9,10,11],
+  // Medicamentos (25 cols): números = 11(conc), 12(unidadMed), 14(unidadMinDisp), 15(cantidad), 16(diasTrat), 19(vrUnit), 20(vrServ), 22(valorPagoMod), 24(consec)
+  Medicamentos: [0,1,2,3,4,5,6,7,8,9,10,13,17,18,21,23],
+  // OtrosServicios (18 cols): números = 9(cantidad), 12(vrUnit), 13(vrServ), 15(valorPagoMod), 17(consec)
+  OtrosServicios: [0,1,2,3,4,5,6,7,8,10,11,14,16]
+};
+
+/* Schemas completos según Resolución 2275/2023 — todos los campos del JSON RIPS */
+const SCHEMA_JX = {
+  Usuarios: ['numFactura','numDocumentoIdObligado','tipoNota','numNota','tipoDocumentoIdentificacion','numDocumentoIdentificacion','tipoUsuario','fechaNacimiento','codSexo','codPaisResidencia','codMunicipioResidencia','codZonaTerritorialResidencia','incapacidad','consecutivo','codPaisOrigen'],
+  Consultas: ['numFactura','numDocumento','codPrestador','fechaInicioAtencion','numAutorizacion','codConsulta','modalidadGrupoServicioTecSal','grupoServicios','codServicio','finalidadTecnologiaSalud','causaMotivoAtencion','codDiagnosticoPrincipal','codDiagnosticoRelacionado1','codDiagnosticoRelacionado2','codDiagnosticoRelacionado3','tipoDiagnosticoPrincipal','tipoDocProf','numDocProf','vrServicio','conceptoRecaudo','valorPagoModerador','numFEVPagoModerador','consecutivo'],
+  Procedimientos: ['numFactura','numDocumento','codPrestador','fechaInicioAtencion','idMIPRES','numAutorizacion','codProcedimiento','viaIngresoServicioSalud','modalidadGrupoServicioTecSal','grupoServicios','codServicio','finalidadTecnologiaSalud','tipoDocProf','numDocProf','codDiagnosticoPrincipal','codDiagnosticoRelacionado','codComplicacion','vrServicio','conceptoRecaudo','valorPagoModerador','numFEVPagoModerador','consecutivo'],
+  Urgencias: ['numFactura','numDocumento','codPrestador','fechaInicioAtencion','numAutorizacion','causaMotivoAtencion','codDiagnosticoPrincipal','codDiagnosticoPrincipalE','codDxRel1','codDxRel2','codDxRel3','condicionDestino','codDxCausaMuerte','fechaEgreso','consecutivo'],
+  Hospitalizacion: ['numFactura','numDocumento','codPrestador','viaIngreso','fechaInicioAtencion','numAutorizacion','causaMotivoAtencion','codDxPrincipal','codDxPrincipalE','codDxRel1','codDxRel2','codDxRel3','codComplicacion','condicionDestino','codDxCausaMuerte','fechaEgreso','consecutivo'],
+  RecienNacidos: ['numFactura','numDocumentoMadre','codPrestador','fechaNacimiento','edadGestacional','numConsultasPrenatales','codSexoBiologico','peso','codDxPrincipal','condicionDestino','codDxCausaMuerte','fechaEgreso','consecutivo'],
+  Medicamentos: ['numFactura','numDocumento','codPrestador','numAutorizacion','idMIPRES','fechaDispensAdmon','codDxPrincipal','codDxRelacionado','tipoMedicamento','codTecnologia','nomTecnologia','concentracion','unidadMedida','formaFarmaceutica','unidadMinDispensa','cantidad','diasTratamiento','tipoDocProf','numDocProf','vrUnit','vrServicio','conceptoRecaudo','valorPagoModerador','numFEVPagoModerador','consecutivo'],
+  OtrosServicios: ['numFactura','numDocumento','codPrestador','numAutorizacion','idMIPRES','fechaSuministro','tipoOS','codTecnologia','nomTecnologia','cantidad','tipoDocProf','numDocProf','vrUnit','vrServicio','conceptoRecaudo','valorPagoModerador','numFEVPagoModerador','consecutivo']
+};
+
+bindDropzone('dropzoneJson', 'fileInputJson', handleJsonFiles);
+bindDropzone('dropzoneXlsx', 'fileInputXlsx', handleXlsxJsonFile);
+
+async function handleJsonFiles(fileList) {
+  STATE.jsonInputs = [];
+  const stat = document.getElementById('jsonStatus');
+  const btn = document.getElementById('btnJsonToXlsx');
+  const files = Array.from(fileList || []);
+  for (const f of files) {
+    try {
+      const text = await f.text();
+      const data = JSON.parse(text);
+      STATE.jsonInputs.push({ name: f.name, data });
+    } catch (err) {
+      stat.textContent = `✗ Error en ${f.name}: ${err.message}`;
+      btn.disabled = true;
+      return;
+    }
+  }
+  stat.textContent = `✓ ${STATE.jsonInputs.length} JSON cargado(s): ${STATE.jsonInputs.map(j => j.name).join(', ')}`;
+  btn.disabled = STATE.jsonInputs.length === 0;
+}
+
+/* Aplica el formato de texto (@) y tipo string a las columnas que deben permanecer
+   como cadena, después de generar la hoja. Esto evita que Excel auto-convierta
+   "12345" a número y se pierda el tipo al re-importar. */
+function enforceStringColumns(ws, strCols) {
+  if (!ws['!ref']) return;
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  for (let R = range.s.r + 1; R <= range.e.r; ++R) {   // omite cabecera (fila 0)
+    for (const C of strCols) {
+      const addr = XLSX.utils.encode_cell({ r: R, c: C });
+      const cell = ws[addr];
+      if (cell && cell.v !== null && cell.v !== undefined && cell.v !== '') {
+        cell.t = 's';
+        cell.v = String(cell.v);
+        cell.z = '@';   // formato Texto
+      }
+    }
+  }
+}
+
+document.getElementById('btnJsonToXlsx').addEventListener('click', () => {
+  const buckets = {};
+  for (const k of Object.keys(SCHEMA_JX)) buckets[k] = [SCHEMA_JX[k]];
+
+  for (const f of STATE.jsonInputs) {
+    const d = f.data || {};
+    const nf = S(d.numFactura) || '';
+    // numDocumentoIdObligado, tipoNota, numNota son TOP-LEVEL del JSON
+    const numDocObligado = S(d.numDocumentoIdObligado);
+    const tipoNota = S(d.tipoNota);
+    const numNota = S(d.numNota);
+    for (const u of (d.usuarios || [])) {
+      const numDocUser = S(u.numDocumentoIdentificacion);
+      buckets.Usuarios.push([
+        nf, numDocObligado, tipoNota, numNota,
+        S(u.tipoDocumentoIdentificacion), numDocUser, S(u.tipoUsuario),
+        S(u.fechaNacimiento), S(u.codSexo), S(u.codPaisResidencia),
+        S(u.codMunicipioResidencia), S(u.codZonaTerritorialResidencia),
+        S(u.incapacidad), N(u.consecutivo), S(u.codPaisOrigen)
+      ]);
+      const s = u.servicios || {};
+      for (const c of (s.consultas || [])) {
+        buckets.Consultas.push([
+          nf, numDocUser, S(c.codPrestador), S(c.fechaInicioAtencion),
+          S(c.numAutorizacion), S(c.codConsulta), S(c.modalidadGrupoServicioTecSal),
+          S(c.grupoServicios), N(c.codServicio), S(c.finalidadTecnologiaSalud),
+          S(c.causaMotivoAtencion), S(c.codDiagnosticoPrincipal),
+          S(c.codDiagnosticoRelacionado1), S(c.codDiagnosticoRelacionado2),
+          S(c.codDiagnosticoRelacionado3), S(c.tipoDiagnosticoPrincipal),
+          S(c.tipoDocumentoIdentificacion), S(c.numDocumentoIdentificacion),
+          N(c.vrServicio), S(c.conceptoRecaudo), N(c.valorPagoModerador),
+          S(c.numFEVPagoModerador), N(c.consecutivo)
+        ]);
+      }
+      for (const p of (s.procedimientos || [])) {
+        buckets.Procedimientos.push([
+          nf, numDocUser, S(p.codPrestador), S(p.fechaInicioAtencion),
+          S(p.idMIPRES), S(p.numAutorizacion), S(p.codProcedimiento),
+          S(p.viaIngresoServicioSalud), S(p.modalidadGrupoServicioTecSal),
+          S(p.grupoServicios), N(p.codServicio), S(p.finalidadTecnologiaSalud),
+          S(p.tipoDocumentoIdentificacion), S(p.numDocumentoIdentificacion),
+          S(p.codDiagnosticoPrincipal), S(p.codDiagnosticoRelacionado),
+          S(p.codComplicacion), N(p.vrServicio), S(p.conceptoRecaudo),
+          N(p.valorPagoModerador), S(p.numFEVPagoModerador), N(p.consecutivo)
+        ]);
+      }
+      for (const ur of (s.urgencias || [])) {
+        buckets.Urgencias.push([
+          nf, numDocUser, S(ur.codPrestador), S(ur.fechaInicioAtencion),
+          S(ur.numAutorizacion), S(ur.causaMotivoAtencion),
+          S(ur.codDiagnosticoPrincipal), S(ur.codDiagnosticoPrincipalE),
+          S(ur.codDiagnosticoRelacionadoE1), S(ur.codDiagnosticoRelacionadoE2),
+          S(ur.codDiagnosticoRelacionadoE3), S(ur.condicionDestinoUsuarioEgreso),
+          S(ur.codDiagnosticoCausaMuerte), S(ur.fechaEgreso), N(ur.consecutivo)
+        ]);
+      }
+      for (const h of (s.hospitalizacion || [])) {
+        buckets.Hospitalizacion.push([
+          nf, numDocUser, S(h.codPrestador), S(h.viaIngresoServicioSalud),
+          S(h.fechaInicioAtencion), S(h.numAutorizacion), S(h.causaMotivoAtencion),
+          S(h.codDiagnosticoPrincipal), S(h.codDiagnosticoPrincipalE),
+          S(h.codDiagnosticoRelacionadoE1), S(h.codDiagnosticoRelacionadoE2),
+          S(h.codDiagnosticoRelacionadoE3), S(h.codComplicacion),
+          S(h.condicionDestinoUsuarioEgreso), S(h.codDiagnosticoCausaMuerte),
+          S(h.fechaEgreso), N(h.consecutivo)
+        ]);
+      }
+      for (const rn of (s.recienNacidos || [])) {
+        buckets.RecienNacidos.push([
+          nf, numDocUser, S(rn.codPrestador), S(rn.fechaNacimiento),
+          N(rn.edadGestacional), N(rn.numConsultasPrenatales),
+          S(rn.codSexoBiologico), N(rn.peso), S(rn.codDiagnosticoPrincipal),
+          S(rn.condicionDestinoUsuarioEgreso), S(rn.codDiagnosticoCausaMuerte),
+          S(rn.fechaEgreso), N(rn.consecutivo)
+        ]);
+      }
+      for (const m of (s.medicamentos || [])) {
+        buckets.Medicamentos.push([
+          nf, numDocUser, S(m.codPrestador), S(m.numAutorizacion),
+          S(m.idMIPRES), S(m.fechaDispensAdmon), S(m.codDiagnosticoPrincipal),
+          S(m.codDiagnosticoRelacionado), S(m.tipoMedicamento),
+          S(m.codTecnologiaSalud), S(m.nomTecnologiaSalud),
+          N(m.concentracionMedicamento), N(m.unidadMedida),
+          S(m.formaFarmaceutica), N(m.unidadMinDispensa),
+          N(m.cantidadMedicamento), N(m.diasTratamiento),
+          S(m.tipoDocumentoIdentificacion), S(m.numDocumentoIdentificacion),
+          N(m.vrUnitMedicamento), N(m.vrServicio), S(m.conceptoRecaudo),
+          N(m.valorPagoModerador), S(m.numFEVPagoModerador), N(m.consecutivo)
+        ]);
+      }
+      for (const o of (s.otrosServicios || [])) {
+        buckets.OtrosServicios.push([
+          nf, numDocUser, S(o.codPrestador), S(o.numAutorizacion),
+          S(o.idMIPRES), S(o.fechaSuministroTecnologia), S(o.tipoOS),
+          S(o.codTecnologiaSalud), S(o.nomTecnologiaSalud), N(o.cantidadOS),
+          S(o.tipoDocumentoIdentificacion), S(o.numDocumentoIdentificacion),
+          N(o.vrUnitOS), N(o.vrServicio), S(o.conceptoRecaudo),
+          N(o.valorPagoModerador), S(o.numFEVPagoModerador), N(o.consecutivo)
+        ]);
+      }
+    }
+  }
+
+  // Solo agregar hojas que tienen datos. Aplicar formato Texto a columnas string.
+  const wb = XLSX.utils.book_new();
+  let sheetsAdded = 0;
+  const skippedSheets = [];
+  for (const [name, rows] of Object.entries(buckets)) {
+    if (rows.length > 1) {
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      enforceStringColumns(ws, STR_COLS_BY_SHEET[name] || []);
+      XLSX.utils.book_append_sheet(wb, ws, name);
+      sheetsAdded++;
+    } else {
+      skippedSheets.push(name);
+    }
+  }
+  if (sheetsAdded === 0) {
+    alert('⚠ Los JSON cargados no contienen datos para exportar.');
+    return;
+  }
+  const stamp = new Date().toISOString().replace(/[:T]/g,'-').slice(0,19);
+  XLSX.writeFile(wb, `RIPS_JSON_a_Excel_${stamp}.xlsx`);
+  log(`⬇ Excel generado con ${STATE.jsonInputs.length} JSON consolidado(s) · ${sheetsAdded} hoja(s) incluida(s)`, 'ok');
+  if (skippedSheets.length) {
+    log(`  ↳ Hojas omitidas por no contener datos: ${skippedSheets.join(', ')}`, 'muted');
+  }
+});
+
+async function handleXlsxJsonFile(fileList) {
+  const file = fileList && fileList[0]; if (!file) return;
+  const stat = document.getElementById('xlsxStatus');
+  try {
+    stat.textContent = '⏳ Leyendo ' + file.name + '...';
+    const wb = await readXlsx(file);
+    STATE.xlsxInput = wb;
+    stat.textContent = `✓ ${file.name} cargado. Hojas detectadas: ${wb.SheetNames.join(', ')}`;
+    document.getElementById('btnXlsxToJson').disabled = false;
+  } catch (err) {
+    stat.textContent = '✗ Error: ' + err.message;
+    document.getElementById('btnXlsxToJson').disabled = true;
+  }
+}
+
+document.getElementById('btnXlsxToJson').addEventListener('click', async () => {
+  if (!STATE.xlsxInput) return;
+  if (typeof JSZip === 'undefined') { alert('JSZip no cargó.'); return; }
+  const wb = STATE.xlsxInput;
+  const getRows = (name) => {
+    const ws = wb.Sheets[name];
+    if (!ws) return [];
+    return XLSX.utils.sheet_to_json(ws, { defval: null });
+  };
+  const usuarios = getRows('Usuarios');
+  const consultas = getRows('Consultas');
+  const procedimientos = getRows('Procedimientos');
+  const urgencias = getRows('Urgencias');
+  const hospitalizaciones = getRows('Hospitalizacion');
+  const recienNacidos = getRows('RecienNacidos');
+  const medicamentos = getRows('Medicamentos');
+  const otrosServicios = getRows('OtrosServicios');
+
+  const facturas = new Map();
+  for (const u of usuarios) {
+    const nf = String(u.numFactura ?? '').trim();
+    if (!nf) continue;
+    if (!facturas.has(nf)) {
+      facturas.set(nf, {
+        numFactura: nf,
+        // Campos top-level del JSON (vienen de la hoja Usuarios, fila por fila)
+        numDocumentoIdObligado: S(u.numDocumentoIdObligado),
+        tipoNota: S(u.tipoNota),
+        numNota: S(u.numNota),
+        usuarios: [],
+        _byDoc: new Map()
+      });
+    } else {
+      // Si una fila posterior trae numDocObligado/tipoNota/numNota y la primera no, usar la última válida
+      const fac = facturas.get(nf);
+      if (!fac.numDocumentoIdObligado && S(u.numDocumentoIdObligado)) fac.numDocumentoIdObligado = S(u.numDocumentoIdObligado);
+      if (!fac.tipoNota && S(u.tipoNota)) fac.tipoNota = S(u.tipoNota);
+      if (!fac.numNota && S(u.numNota)) fac.numNota = S(u.numNota);
+    }
+    const fac = facturas.get(nf);
+    const userObj = {
+      tipoDocumentoIdentificacion: S(u.tipoDocumentoIdentificacion),
+      numDocumentoIdentificacion: S(u.numDocumentoIdentificacion) || '',
+      tipoUsuario: S(u.tipoUsuario),
+      fechaNacimiento: S(u.fechaNacimiento),
+      codSexo: S(u.codSexo),
+      codPaisResidencia: S(u.codPaisResidencia),
+      codMunicipioResidencia: S(u.codMunicipioResidencia),
+      codZonaTerritorialResidencia: S(u.codZonaTerritorialResidencia),
+      incapacidad: S(u.incapacidad),
+      consecutivo: N(u.consecutivo),
+      codPaisOrigen: S(u.codPaisOrigen),
+      servicios: {}
+    };
+    fac.usuarios.push(userObj);
+    fac._byDoc.set(userObj.numDocumentoIdentificacion, userObj);
+  }
+
+  const attachServ = (rows, key, mapper) => {
+    for (const row of rows) {
+      const nf = String(row.numFactura ?? '').trim();
+      const numDoc = String(row.numDocumento ?? row.numDocumentoMadre ?? '').trim();
+      const fac = facturas.get(nf);
+      if (!fac) continue;
+      const user = fac._byDoc.get(numDoc) || fac.usuarios[0];
+      if (!user) continue;
+      if (!user.servicios[key]) user.servicios[key] = [];
+      user.servicios[key].push(mapper(row));
+    }
+  };
+
+  attachServ(consultas, 'consultas', r => ({
+    codPrestador: S(r.codPrestador),
+    fechaInicioAtencion: S(r.fechaInicioAtencion),
+    numAutorizacion: S(r.numAutorizacion),
+    codConsulta: S(r.codConsulta),
+    modalidadGrupoServicioTecSal: S(r.modalidadGrupoServicioTecSal),
+    grupoServicios: S(r.grupoServicios),
+    codServicio: N(r.codServicio),
+    finalidadTecnologiaSalud: S(r.finalidadTecnologiaSalud),
+    causaMotivoAtencion: S(r.causaMotivoAtencion),
+    codDiagnosticoPrincipal: S(r.codDiagnosticoPrincipal),
+    codDiagnosticoRelacionado1: S(r.codDiagnosticoRelacionado1),
+    codDiagnosticoRelacionado2: S(r.codDiagnosticoRelacionado2),
+    codDiagnosticoRelacionado3: S(r.codDiagnosticoRelacionado3),
+    tipoDiagnosticoPrincipal: S(r.tipoDiagnosticoPrincipal),
+    tipoDocumentoIdentificacion: S(r.tipoDocProf),
+    numDocumentoIdentificacion: S(r.numDocProf),
+    vrServicio: N(r.vrServicio),
+    conceptoRecaudo: S(r.conceptoRecaudo),
+    valorPagoModerador: N(r.valorPagoModerador),
+    numFEVPagoModerador: S(r.numFEVPagoModerador),
+    consecutivo: N(r.consecutivo)
+  }));
+
+  attachServ(procedimientos, 'procedimientos', r => ({
+    codPrestador: S(r.codPrestador),
+    fechaInicioAtencion: S(r.fechaInicioAtencion),
+    idMIPRES: S(r.idMIPRES),
+    numAutorizacion: S(r.numAutorizacion),
+    codProcedimiento: S(r.codProcedimiento),
+    viaIngresoServicioSalud: S(r.viaIngresoServicioSalud),
+    modalidadGrupoServicioTecSal: S(r.modalidadGrupoServicioTecSal),
+    grupoServicios: S(r.grupoServicios),
+    codServicio: N(r.codServicio),
+    finalidadTecnologiaSalud: S(r.finalidadTecnologiaSalud),
+    tipoDocumentoIdentificacion: S(r.tipoDocProf),
+    numDocumentoIdentificacion: S(r.numDocProf),
+    codDiagnosticoPrincipal: S(r.codDiagnosticoPrincipal),
+    codDiagnosticoRelacionado: S(r.codDiagnosticoRelacionado),
+    codComplicacion: S(r.codComplicacion),
+    vrServicio: N(r.vrServicio),
+    conceptoRecaudo: S(r.conceptoRecaudo),
+    valorPagoModerador: N(r.valorPagoModerador),
+    numFEVPagoModerador: S(r.numFEVPagoModerador),
+    consecutivo: N(r.consecutivo)
+  }));
+
+  attachServ(urgencias, 'urgencias', r => ({
+    codPrestador: S(r.codPrestador),
+    fechaInicioAtencion: S(r.fechaInicioAtencion),
+    numAutorizacion: S(r.numAutorizacion),
+    causaMotivoAtencion: S(r.causaMotivoAtencion),
+    codDiagnosticoPrincipal: S(r.codDiagnosticoPrincipal),
+    codDiagnosticoPrincipalE: S(r.codDiagnosticoPrincipalE),
+    codDiagnosticoRelacionadoE1: S(r.codDxRel1),
+    codDiagnosticoRelacionadoE2: S(r.codDxRel2),
+    codDiagnosticoRelacionadoE3: S(r.codDxRel3),
+    condicionDestinoUsuarioEgreso: S(r.condicionDestino),
+    codDiagnosticoCausaMuerte: S(r.codDxCausaMuerte),
+    fechaEgreso: S(r.fechaEgreso),
+    consecutivo: N(r.consecutivo)
+  }));
+
+  attachServ(hospitalizaciones, 'hospitalizacion', r => ({
+    codPrestador: S(r.codPrestador),
+    viaIngresoServicioSalud: S(r.viaIngreso),
+    fechaInicioAtencion: S(r.fechaInicioAtencion),
+    numAutorizacion: S(r.numAutorizacion),
+    causaMotivoAtencion: S(r.causaMotivoAtencion),
+    codDiagnosticoPrincipal: S(r.codDxPrincipal),
+    codDiagnosticoPrincipalE: S(r.codDxPrincipalE),
+    codDiagnosticoRelacionadoE1: S(r.codDxRel1),
+    codDiagnosticoRelacionadoE2: S(r.codDxRel2),
+    codDiagnosticoRelacionadoE3: S(r.codDxRel3),
+    codComplicacion: S(r.codComplicacion),
+    condicionDestinoUsuarioEgreso: S(r.condicionDestino),
+    codDiagnosticoCausaMuerte: S(r.codDxCausaMuerte),
+    fechaEgreso: S(r.fechaEgreso),
+    consecutivo: N(r.consecutivo)
+  }));
+
+  attachServ(recienNacidos, 'recienNacidos', r => ({
+    codPrestador: S(r.codPrestador),
+    fechaNacimiento: S(r.fechaNacimiento),
+    edadGestacional: N(r.edadGestacional),
+    numConsultasPrenatales: N(r.numConsultasPrenatales),
+    codSexoBiologico: S(r.codSexoBiologico),
+    peso: N(r.peso),
+    codDiagnosticoPrincipal: S(r.codDxPrincipal),
+    condicionDestinoUsuarioEgreso: S(r.condicionDestino),
+    codDiagnosticoCausaMuerte: S(r.codDxCausaMuerte),
+    fechaEgreso: S(r.fechaEgreso),
+    consecutivo: N(r.consecutivo)
+  }));
+
+  attachServ(medicamentos, 'medicamentos', r => ({
+    codPrestador: S(r.codPrestador),
+    numAutorizacion: S(r.numAutorizacion),
+    idMIPRES: S(r.idMIPRES),
+    fechaDispensAdmon: S(r.fechaDispensAdmon),
+    codDiagnosticoPrincipal: S(r.codDxPrincipal),
+    codDiagnosticoRelacionado: S(r.codDxRelacionado),
+    tipoMedicamento: S(r.tipoMedicamento),
+    codTecnologiaSalud: S(r.codTecnologia),
+    nomTecnologiaSalud: S(r.nomTecnologia),
+    concentracionMedicamento: N(r.concentracion),
+    unidadMedida: N(r.unidadMedida) ?? 0,
+    formaFarmaceutica: S(r.formaFarmaceutica),
+    unidadMinDispensa: N(r.unidadMinDispensa) ?? 1,
+    cantidadMedicamento: N(r.cantidad),
+    diasTratamiento: N(r.diasTratamiento) ?? 1,
+    tipoDocumentoIdentificacion: S(r.tipoDocProf),
+    numDocumentoIdentificacion: S(r.numDocProf),
+    vrUnitMedicamento: N(r.vrUnit),
+    vrServicio: N(r.vrServicio),
+    conceptoRecaudo: S(r.conceptoRecaudo),
+    valorPagoModerador: N(r.valorPagoModerador) ?? 0,
+    numFEVPagoModerador: S(r.numFEVPagoModerador),
+    consecutivo: N(r.consecutivo)
+  }));
+
+  attachServ(otrosServicios, 'otrosServicios', r => ({
+    codPrestador: S(r.codPrestador),
+    numAutorizacion: S(r.numAutorizacion),
+    idMIPRES: S(r.idMIPRES),
+    fechaSuministroTecnologia: S(r.fechaSuministro),
+    tipoOS: S(r.tipoOS),
+    codTecnologiaSalud: S(r.codTecnologia),
+    nomTecnologiaSalud: S(r.nomTecnologia),
+    cantidadOS: N(r.cantidad),
+    tipoDocumentoIdentificacion: S(r.tipoDocProf),
+    numDocumentoIdentificacion: S(r.numDocProf),
+    vrUnitOS: N(r.vrUnit),
+    vrServicio: N(r.vrServicio),
+    conceptoRecaudo: S(r.conceptoRecaudo),
+    valorPagoModerador: N(r.valorPagoModerador) ?? 0,
+    numFEVPagoModerador: S(r.numFEVPagoModerador),
+    consecutivo: N(r.consecutivo)
+  }));
+
+  const zip = new JSZip();
+  for (const [nf, fac] of facturas.entries()) {
+    for (const u of fac.usuarios) delete u._byDoc;
+    delete fac._byDoc;
+    const obj = {
+      numDocumentoIdObligado: fac.numDocumentoIdObligado || null,
+      numFactura: nf,
+      tipoNota: fac.tipoNota || null,
+      numNota: fac.numNota || null,
+      usuarios: fac.usuarios
+    };
+    zip.file(`RIPS_${sanitizeFilename(nf)}.json`, JSON.stringify(obj, null, 2));
+  }
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const stamp = new Date().toISOString().replace(/[:T]/g,'-').slice(0,19);
+  triggerDownload(blob, `RIPS_Excel_a_JSON_${stamp}.zip`);
+  log(`⬇ ZIP de JSON generado con ${facturas.size} factura(s) desde Excel`, 'ok');
+});
+
+document.getElementById('btnTemplateXlsx').addEventListener('click', () => {
+  const wb = XLSX.utils.book_new();
+  for (const [name, header] of Object.entries(SCHEMA_JX)) {
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([header]), name);
+  }
+  XLSX.writeFile(wb, 'RIPS_Plantilla_Excel.xlsx');
+});
+
+/* ======== INIT ======== */
+renderMapTables();
+log('RIPS Converter v2.3 listo. Carga archivos TXT para empezar.', 'info');
+log('Tip: en el paso 2 puede cargar bases maestras de DX y fechas de nacimiento (opcional).', 'muted');
+</script>
+</body>
+</html>
