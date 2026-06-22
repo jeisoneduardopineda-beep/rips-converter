@@ -1,0 +1,481 @@
+
+<!-- ═══════════════════════════════════════════════════════
+     THREE.JS PBR + GSAP KEYNOTE ANIMATIONS — RIPS CONVERTER
+     Studio lighting · MeshPhysicalMaterial · Bloom · ScrollTrigger
+═══════════════════════════════════════════════════════ -->
+
+<!-- Loader elegante -->
+<div id="gl-loader" style="position:fixed;inset:0;z-index:99998;background:#040e1c;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;pointer-events:none;">
+  <svg width="48" height="48" viewBox="0 0 48 48" fill="none" style="animation:_spin .85s linear infinite">
+    <circle cx="24" cy="24" r="20" stroke="rgba(2,132,199,.18)" stroke-width="3.5"/>
+    <path d="M24 4 A20 20 0 0 1 44 24" stroke="#0284c7" stroke-width="3.5" stroke-linecap="round"/>
+  </svg>
+  <span style="color:rgba(255,255,255,.45);font:11px/1 'Inter',monospace;letter-spacing:.18em">CARGANDO SISTEMA</span>
+  <style>@keyframes _spin{to{transform:rotate(360deg)}}</style>
+</div>
+
+<!-- Canvas fondo post-login -->
+<canvas id="bgWarm" style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;"></canvas>
+
+<!-- GSAP (antes del módulo Three.js) -->
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+
+<!-- ═══ THREE.JS PBR SCENE (ES Module) ═══ -->
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+import { EffectComposer }  from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass }      from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { OutputPass }      from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/OutputPass.js';
+import { RoomEnvironment } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/environments/RoomEnvironment.js';
+
+const MOBILE = window.innerWidth < 768;
+
+function hideLoader() {
+  const el = document.getElementById('gl-loader');
+  if (!el) return;
+  el.style.transition = 'opacity .6s ease';
+  el.style.opacity = '0';
+  setTimeout(() => el.remove(), 700);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   1. LOGIN CANVAS — Escena PBR con objetos médicos
+═══════════════════════════════════════════════════════════ */
+(function initLogin() {
+  const cv  = document.getElementById('loginCanvas'); if (!cv) return;
+  const lft = document.querySelector('.lo-left');     if (!lft) return;
+
+  let W = lft.clientWidth  || window.innerWidth * 0.58;
+  let H = lft.clientHeight || window.innerHeight;
+
+  /* Renderer */
+  const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: !MOBILE, alpha: false });
+  renderer.setSize(W, H, false);
+  renderer.setPixelRatio(MOBILE ? 1 : Math.min(window.devicePixelRatio, 2));
+  renderer.toneMapping         = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
+  renderer.outputColorSpace    = THREE.SRGBColorSpace;
+  renderer.shadowMap.enabled   = !MOBILE;
+  renderer.shadowMap.type      = THREE.PCFSoftShadowMap;
+
+  /* Scene + cámara */
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x040e1c);
+  scene.fog        = new THREE.FogExp2(0x040e1c, 0.055);
+
+  const camera = new THREE.PerspectiveCamera(48, W / H, 0.1, 100);
+  camera.position.set(0, 0, 6.8);
+
+  /* Environment PBR */
+  const pmrem  = new THREE.PMREMGenerator(renderer);
+  pmrem.compileEquirectangularShader();
+  const envMap = pmrem.fromScene(new RoomEnvironment(0.06), 0.04).texture;
+  scene.environment = envMap;
+
+  /* ─── Luces estudio 3-point ─── */
+  scene.add(new THREE.AmbientLight(0x06101e, 0.9));
+
+  const keyL = new THREE.DirectionalLight(0xfff5e8, 3.8);
+  keyL.position.set(-3.5, 5.5, 2.5);
+  if (!MOBILE) { keyL.castShadow = true; keyL.shadow.mapSize.set(1024,1024); keyL.shadow.radius = 5; }
+  scene.add(keyL);
+
+  const fillL = new THREE.DirectionalLight(0x4488ff, 2.0);
+  fillL.position.set(5, -1, 1);
+  scene.add(fillL);
+
+  const rimL = new THREE.DirectionalLight(0x00cc88, 2.5);
+  rimL.position.set(0.5, -3, -4.5);
+  scene.add(rimL);
+
+  const mLight = new THREE.PointLight(0x0284c7, 3.0, 11, 2);
+  mLight.position.set(0, 1, 4);
+  scene.add(mLight);
+
+  /* ─── Materiales PBR ─── */
+  const matMetalRed = new THREE.MeshStandardMaterial({
+    color: 0xdc2626, metalness: 0.82, roughness: 0.14, envMapIntensity: 2.2 });
+
+  const matMetalBlue = new THREE.MeshStandardMaterial({
+    color: 0x0284c7, metalness: 0.88, roughness: 0.10, envMapIntensity: 2.4 });
+
+  const matSilver = new THREE.MeshStandardMaterial({
+    color: 0xd0e8f5, metalness: 0.96, roughness: 0.05, envMapIntensity: 2.8 });
+
+  const matPlastic = new THREE.MeshStandardMaterial({
+    color: 0x08192e, metalness: 0.04, roughness: 0.6, envMapIntensity: 0.5 });
+
+  const matGlassBlue = new THREE.MeshPhysicalMaterial({
+    color: 0xaaccee, metalness: 0, roughness: 0.02,
+    transmission: 0.93, thickness: 0.5, ior: 1.52,
+    reflectivity: 0.5, transparent: true, opacity: 0.88,
+    envMapIntensity: 2.2 });
+
+  const matGlassGreen = new THREE.MeshPhysicalMaterial({
+    color: 0x34d399, metalness: 0, roughness: 0.04,
+    transmission: 0.86, thickness: 0.4, ior: 1.50,
+    transparent: true, opacity: 0.88, envMapIntensity: 1.9 });
+
+  /* ─── Objetos ─── */
+
+  /* 1. Cruz médica — metálica roja, centro derecha */
+  const crossG = new THREE.Group();
+  const cV = new THREE.Mesh(new THREE.BoxGeometry(0.28, 1.52, 0.22), matMetalRed);
+  const cH = new THREE.Mesh(new THREE.BoxGeometry(1.52, 0.28, 0.22), matMetalRed);
+  cV.castShadow = cH.castShadow = true;
+  crossG.add(cV, cH);
+  crossG.position.set(1.7, 0.3, 0.2);
+  scene.add(crossG);
+
+  /* 2. Jeringa — vidrio + metal, izquierda inclinada */
+  const syringeG = new THREE.Group();
+  const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 1.68, 32, 1, true), matGlassBlue);
+  const capT = new THREE.Mesh(new THREE.CircleGeometry(0.09, 32), matGlassBlue);
+  capT.position.y = 0.84; capT.rotation.x = -Math.PI/2;
+  const capB = new THREE.Mesh(new THREE.CircleGeometry(0.09, 32), matGlassBlue);
+  capB.position.y = -0.84; capB.rotation.x = Math.PI/2;
+  barrel.castShadow = true;
+  const plungerR = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.58, 12), matMetalBlue);
+  plungerR.position.y = -0.08;
+  const plungerH = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, 0.1, 16), matPlastic);
+  plungerH.position.y = -0.84;
+  const needle = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.006, 0.52, 8), matSilver);
+  needle.position.y = 0.94; needle.castShadow = true;
+  const grip = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.06, 0.1), matPlastic);
+  grip.position.y = 0.79;
+  syringeG.add(barrel, capT, capB, plungerR, plungerH, needle, grip);
+  syringeG.position.set(-2.4, 0.3, 0.5);
+  syringeG.rotation.z = 0.35;
+  scene.add(syringeG);
+
+  /* 3. Frasco Erlenmeyer — vidrio verde */
+  const fPts = [];
+  for (let i = 0; i <= 26; i++) {
+    const tt = i / 26;
+    let r = tt < 0.55
+      ? 0.44 * Math.pow(Math.sin(tt / 0.55 * Math.PI * 0.5), 0.65) + 0.09
+      : Math.max(0.04, 0.14 - (tt - 0.55) * 0.28);
+    fPts.push(new THREE.Vector2(r, (tt - 0.5) * 2.4));
+  }
+  const flask  = new THREE.Mesh(new THREE.LatheGeometry(fPts, 40), matGlassGreen);
+  flask.castShadow = true;
+  flask.position.set(2.9, -0.5, -0.8);
+  flask.scale.setScalar(0.88);
+  scene.add(flask);
+  const liqPts = fPts.slice(0, 15).map(p => new THREE.Vector2(p.x * 0.84, p.y));
+  const liquidM = new THREE.Mesh(
+    new THREE.LatheGeometry(liqPts, 30),
+    new THREE.MeshStandardMaterial({ color: 0x059669, transparent: true, opacity: 0.55, emissive: 0x00442a, emissiveIntensity: 0.45 })
+  );
+  liquidM.position.copy(flask.position);
+  liquidM.scale.copy(flask.scale);
+  scene.add(liquidM);
+
+  /* 4. Tubos de ensayo en rack */
+  const rackG = new THREE.Group();
+  [{c:0x0284c7,l:0x0369a1},{c:0x10b981,l:0x047857},{c:0xef4444,l:0xb91c1c}].forEach((cfg, i) => {
+    const tg = new THREE.Group();
+    const tm = new THREE.MeshPhysicalMaterial({
+      color: cfg.c, transmission: 0.90, roughness: 0.03, metalness: 0,
+      thickness: 0.25, ior: 1.45, transparent: true, opacity: 0.90, envMapIntensity: 1.7 });
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.073, 0.068, 0.96, 20), tm);
+    const liq  = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.056, 0.052, 0.28, 14),
+      new THREE.MeshStandardMaterial({ color: cfg.l, transparent: true, opacity: 0.65, emissive: cfg.l, emissiveIntensity: 0.28 })
+    );
+    liq.position.y = -0.3;
+    tg.add(body, liq);
+    tg.position.x = (i-1) * 0.22;
+    tg.rotation.z = (Math.random()-.5) * 0.07;
+    rackG.add(tg);
+  });
+  rackG.add(new THREE.Mesh(
+    new THREE.BoxGeometry(0.72, 0.06, 0.18),
+    new THREE.MeshStandardMaterial({ color: 0x0a1e3a, metalness: 0.75, roughness: 0.28 })
+  ).translateY(-0.5));
+  rackG.position.set(-2.1, -1.0, 0.5);
+  scene.add(rackG);
+
+  /* 5. Hélice ADN */
+  class Helix extends THREE.Curve {
+    constructor(ph) { super(); this.ph = ph; }
+    getPoint(t, v = new THREE.Vector3()) {
+      const a = t * Math.PI * 9 + this.ph;
+      return v.set(Math.cos(a) * 0.33, (t-.5) * 5.6, Math.sin(a) * 0.33);
+    }
+  }
+  const dnaG = new THREE.Group();
+  dnaG.add(
+    new THREE.Mesh(new THREE.TubeGeometry(new Helix(0), 220, 0.027, 8),
+      new THREE.MeshStandardMaterial({color:0x0284c7,metalness:0.72,roughness:0.16,envMapIntensity:1.5})),
+    new THREE.Mesh(new THREE.TubeGeometry(new Helix(Math.PI), 220, 0.027, 8),
+      new THREE.MeshStandardMaterial({color:0x059669,metalness:0.72,roughness:0.16,envMapIntensity:1.5}))
+  );
+  for (let i = 0; i < 18; i++) {
+    const tt = i/18, a = tt * Math.PI * 9;
+    const x1=Math.cos(a)*.33, z1=Math.sin(a)*.33;
+    const lnk = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.012,0.012,0.66,6),
+      new THREE.MeshStandardMaterial({color:0x7dd3fc,metalness:0.5,roughness:0.35})
+    );
+    lnk.position.set(0,(tt-.5)*5.6,0);
+    lnk.lookAt(x1, lnk.position.y, z1);
+    lnk.rotateX(Math.PI/2);
+    dnaG.add(lnk);
+  }
+  dnaG.position.set(-4.2, 0, -1.5);
+  dnaG.scale.setScalar(0.88);
+  scene.add(dnaG);
+
+  /* 6. Documentos flotantes TXT / JSON / XLSX */
+  const docGs = [];
+  [{pos:[-1.4,1.9,-0.2],c:0x0284c7,n:'TXT'},{pos:[0.6,2.2,-0.5],c:0x059669,n:'JSON'},{pos:[0.1,-2.2,0.3],c:0x0891b2,n:'XLSX'}]
+  .forEach(d => {
+    const g = new THREE.Group();
+    const page = new THREE.Mesh(new THREE.BoxGeometry(0.53,0.70,0.04),
+      new THREE.MeshStandardMaterial({color:d.c,metalness:0.25,roughness:0.30,envMapIntensity:1.3}));
+    page.castShadow = true;
+    const fold = new THREE.Mesh(new THREE.BoxGeometry(0.14,0.14,0.045),
+      new THREE.MeshStandardMaterial({color:d.c,metalness:0.4,roughness:0.22}));
+    fold.position.set(0.195, 0.28, 0.001);
+    g.add(page, fold);
+    g.position.set(...d.pos);
+    g.userData = { ph: Math.random()*Math.PI*2, sp: 0.5+Math.random()*.3 };
+    scene.add(g);
+    docGs.push(g);
+  });
+
+  /* 7. Gráfico de barras 3D */
+  const chartG = new THREE.Group();
+  [[.5,0x0284c7],[.9,0x059669],[.65,0x0891b2],[1.1,0x0284c7],[.4,0x7dd3fc]].forEach(([h,c],i) => {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(.17,h,.17),
+      new THREE.MeshStandardMaterial({color:c,metalness:.68,roughness:.16,envMapIntensity:1.7}));
+    b.position.set((i-2)*.21,h/2,0); b.castShadow=true;
+    chartG.add(b);
+  });
+  chartG.add(new THREE.Mesh(new THREE.BoxGeometry(1.18,.04,.26),
+    new THREE.MeshStandardMaterial({color:0x081520,metalness:.82,roughness:.22})));
+  chartG.position.set(2.1,-1.6,0.4);
+  chartG.scale.setScalar(.84);
+  scene.add(chartG);
+
+  /* 8. Microscopio compuesto */
+  const microG = new THREE.Group();
+  const mBlue = new THREE.MeshStandardMaterial({color:0x0a2050,metalness:.55,roughness:.35,envMapIntensity:1.2});
+  const mDark = new THREE.MeshStandardMaterial({color:0x05101e,metalness:.7,roughness:.25,envMapIntensity:1.5});
+  microG.add(
+    new THREE.Mesh(new THREE.BoxGeometry(.88,.1,.48), mDark),                          // base
+    Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,1.08,20), mBlue), {position:{set(x,y,z){this.x=x;this.y=y;this.z=z;return this}}}),
+  );
+  // columna
+  const col = new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,1.08,20), mBlue);
+  col.position.set(-.12,.52,0);
+  // tubo optico
+  const tuboOp = new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,.72,18), mDark);
+  tuboOp.position.set(.06,-.26,0); tuboOp.rotation.z = .4;
+  // ocular
+  const ocular = new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,.2,14), mBlue);
+  ocular.position.set(.18,-.68,0); ocular.rotation.z=.4;
+  // objetivo
+  const obj2 = new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,.33,12), mBlue);
+  obj2.position.set(-.08,.28,0); obj2.rotation.z=-.15;
+  // platina
+  const platina = new THREE.Mesh(new THREE.BoxGeometry(.48,.05,.38), matMetalBlue);
+  platina.position.set(-.1,.06,0);
+  microG.add(col, tuboOp, ocular, obj2, platina);
+  microG.position.set(-1.2,1.2,-1.0);
+  microG.scale.setScalar(.88);
+  scene.add(microG);
+
+  /* 9. Partículas */
+  const PN  = MOBILE ? 110 : 270;
+  const pP  = new Float32Array(PN*3);
+  const pC  = new Float32Array(PN*3);
+  const pal = [new THREE.Color(0x0284c7),new THREE.Color(0x059669),new THREE.Color(0x7dd3fc),new THREE.Color(0x0891b2)];
+  for (let i=0;i<PN;i++) {
+    pP[i*3]=(Math.random()-.5)*14; pP[i*3+1]=(Math.random()-.5)*11; pP[i*3+2]=(Math.random()-.5)*7-2;
+    const cc=pal[i%4]; pC[i*3]=cc.r; pC[i*3+1]=cc.g; pC[i*3+2]=cc.b;
+  }
+  const pGeom = new THREE.BufferGeometry();
+  pGeom.setAttribute('position', new THREE.BufferAttribute(pP,3));
+  pGeom.setAttribute('color',    new THREE.BufferAttribute(pC,3));
+  const parts = new THREE.Points(pGeom, new THREE.PointsMaterial({size:.046,vertexColors:true,transparent:true,opacity:.62,sizeAttenuation:true}));
+  scene.add(parts);
+
+  /* ─── Post-processing ─── */
+  const composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  if (!MOBILE) {
+    const bloom = new UnrealBloomPass(new THREE.Vector2(W,H), 0.78, 0.52, 0.78);
+    composer.addPass(bloom);
+  }
+  composer.addPass(new OutputPass());
+
+  /* ─── Loop de animación ─── */
+  let mx=0, my=0, tmx=0, tmy=0, t=0;
+
+  lft.addEventListener('mousemove', e => {
+    const rr = lft.getBoundingClientRect();
+    tmx = (e.clientX-rr.left)/rr.width - .5;
+    tmy = (e.clientY-rr.top)/rr.height - .5;
+    mLight.position.x = tmx*8;
+    mLight.position.y = -tmy*6;
+  });
+
+  window.addEventListener('resize', () => {
+    W = lft.clientWidth; H = lft.clientHeight;
+    renderer.setSize(W,H,false); composer.setSize(W,H);
+    camera.aspect = W/H; camera.updateProjectionMatrix();
+  });
+
+  (function animate() {
+    requestAnimationFrame(animate);
+    t += .012;
+    mx += (tmx-mx)*.044; my += (tmy-my)*.044;
+
+    camera.position.x += (mx*.9 - camera.position.x)*.025;
+    camera.position.y += (-my*.7 - camera.position.y)*.025;
+    camera.lookAt(0,0,0);
+
+    crossG.rotation.y   = t*.38;
+    crossG.rotation.x   = Math.sin(t*.28)*.08;
+    crossG.position.y   = .3 + Math.sin(t*.52)*.09;
+
+    syringeG.rotation.y = Math.sin(t*.32)*.14;
+    syringeG.position.y = .3 + Math.sin(t*.44+1.2)*.11;
+
+    flask.rotation.y    = t*.22;
+    flask.position.y    = -.5 + Math.sin(t*.36)*.1;
+    liquidM.position.copy(flask.position);
+    liquidM.rotation.y  = flask.rotation.y;
+
+    rackG.rotation.y    = Math.sin(t*.18)*.12;
+    rackG.position.y    = -1 + Math.sin(t*.5+1.8)*.09;
+
+    dnaG.rotation.y     = t*.14;
+
+    microG.rotation.y   = Math.sin(t*.24-.5)*.18;
+    microG.position.y   = 1.2 + Math.sin(t*.42+.8)*.1;
+
+    docGs.forEach(dg => {
+      dg.position.y  += Math.sin(t*dg.userData.sp + dg.userData.ph)*.003;
+      dg.rotation.y   = t*.18 + dg.userData.ph;
+      dg.rotation.x   = Math.sin(t*.25+dg.userData.ph)*.08;
+    });
+
+    chartG.rotation.y   = Math.sin(t*.22)*.18;
+    chartG.position.y   = -1.6 + Math.sin(t*.38+.6)*.09;
+
+    parts.rotation.y    = t*.016;
+    parts.rotation.x    = t*.007;
+
+    rimL.intensity      = 2.2 + Math.sin(t*.58)*.45;
+
+    composer.render();
+  })();
+
+  setTimeout(hideLoader, 950);
+})();
+
+/* ═══════════════════════════════════════════════════════════
+   2. FONDO POST-LOGIN — Escena sutil, objetos translúcidos
+═══════════════════════════════════════════════════════════ */
+(function initBg() {
+  const cv = document.getElementById('bgWarm'); if (!cv) return;
+  let W = window.innerWidth, H = window.innerHeight;
+
+  const renderer = new THREE.WebGLRenderer({canvas:cv,antialias:false,alpha:true});
+  renderer.setSize(W,H,false); renderer.setPixelRatio(1);
+  renderer.setClearColor(0,0); renderer.toneMapping = THREE.ACESFilmicToneMapping;
+
+  const scene  = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(60,W/H,.1,100);
+  camera.position.z = 5;
+
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment()).texture;
+  scene.add(new THREE.AmbientLight(0x0a1828,.35));
+  const dl = new THREE.DirectionalLight(0x3366bb,.65); dl.position.set(2,3,1); scene.add(dl);
+
+  const bgObjs = [];
+  [{g:new THREE.BoxGeometry(.32,.42,.04),c:0x0284c7,p:[3.6,1.5,-3]},
+   {g:new THREE.CylinderGeometry(.08,.08,.7,16),c:0x059669,p:[-3.8,-1.2,-2]},
+   {g:new THREE.BoxGeometry(.22,.08,.22),c:0x0891b2,p:[3.2,-2,-3]},
+   {g:new THREE.BoxGeometry(.18,.48,.03),c:0x0369a1,p:[-3,1.8,-4]}]
+  .forEach(cfg => {
+    const m = new THREE.Mesh(cfg.g, new THREE.MeshStandardMaterial({
+      color:cfg.c, metalness:.55, roughness:.3, transparent:true, opacity:.20, envMapIntensity:1.2
+    }));
+    m.position.set(...cfg.p); m.userData.off = Math.random()*Math.PI*2;
+    scene.add(m); bgObjs.push(m);
+  });
+
+  const N=55, pp=new Float32Array(N*3);
+  for(let i=0;i<N;i++){pp[i*3]=(Math.random()-.5)*12;pp[i*3+1]=(Math.random()-.5)*9;pp[i*3+2]=(Math.random()-.5)*5-2;}
+  const pg=new THREE.BufferGeometry(); pg.setAttribute('position',new THREE.BufferAttribute(pp,3));
+  scene.add(new THREE.Points(pg,new THREE.PointsMaterial({size:.025,color:0x4499cc,transparent:true,opacity:.18})));
+
+  window.addEventListener('resize', () => {
+    W=window.innerWidth; H=window.innerHeight;
+    renderer.setSize(W,H,false); camera.aspect=W/H; camera.updateProjectionMatrix();
+  });
+
+  let t=0;
+  (function animate(){
+    requestAnimationFrame(animate); t+=.004;
+    bgObjs.forEach(o=>{o.rotation.x=t*.2+o.userData.off;o.rotation.y=t*.3;});
+    renderer.render(scene,camera);
+  })();
+})();
+</script>
+
+<!-- ═══ GSAP ScrollTrigger + Tilt ═══ -->
+<script>
+(function(){
+  if(typeof gsap==='undefined') return;
+  gsap.registerPlugin(ScrollTrigger);
+
+  /* Tilt con luz dinámica (keynote-style) */
+  function initTilt(){
+    document.querySelectorAll('.step,.db-kpi,.db-box,.norma-card').forEach(el=>{
+      if(el.dataset.gt) return; el.dataset.gt='1';
+      el.addEventListener('mousemove', e=>{
+        const r=el.getBoundingClientRect();
+        const x=(e.clientX-r.left)/r.width-.5, y=(e.clientY-r.top)/r.height-.5;
+        gsap.to(el,{rotateX:-y*10,rotateY:x*10,translateZ:10,duration:.28,ease:'power2.out',overwrite:'auto',transformPerspective:1000});
+        el.style.background=`radial-gradient(circle at ${(x+.5)*100}% ${(y+.5)*100}%, rgba(125,211,252,.18) 0%, transparent 64%), var(--panel, #fff)`;
+        el.style.boxShadow=`${-x*22}px ${-y*22+16}px 44px rgba(2,80,160,.16), 0 0 0 1px rgba(2,132,199,.1)`;
+      });
+      el.addEventListener('mouseleave',()=>{
+        gsap.to(el,{rotateX:0,rotateY:0,translateZ:0,duration:.85,ease:'elastic.out(1,.55)',overwrite:'auto'});
+        el.style.background=''; el.style.boxShadow='';
+      });
+    });
+  }
+  initTilt();
+  new MutationObserver(initTilt).observe(document.body,{childList:true,subtree:true});
+
+  /* Scroll animations — se activan post-login */
+  function initScroll(){
+    ScrollTrigger.refresh();
+    const ease='power3.out';
+    gsap.from('.step',{scrollTrigger:{trigger:'.step',start:'top 88%',toggleActions:'play none none none'},y:55,opacity:0,duration:.75,stagger:.13,ease,clearProps:'all'});
+    gsap.from('.db-kpi',{scrollTrigger:{trigger:'.db-kpi',start:'top 88%'},scale:.88,opacity:0,duration:.65,stagger:.09,ease:'back.out(1.6)',clearProps:'all'});
+    gsap.from('.norma-card',{scrollTrigger:{trigger:'.norma-card',start:'top 90%'},x:-28,opacity:0,duration:.6,stagger:.1,ease:'power2.out',clearProps:'all'});
+    gsap.from('.db-box',{scrollTrigger:{trigger:'.db-box',start:'top 88%'},y:30,opacity:0,duration:.6,stagger:.08,ease:'power2.out',clearProps:'all'});
+  }
+
+  /* Patch login/demo para iniciar scroll animations */
+  ['doLogin','usarDemo'].forEach(fn=>{
+    const orig=window[fn];
+    if(!orig) return;
+    window[fn]=function(...a){
+      const r=orig.apply(this,a);
+      setTimeout(initScroll, 750);
+      return r;
+    };
+  });
+})();
+</script>

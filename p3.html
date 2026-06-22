@@ -1,0 +1,70 @@
+
+/* ═══ FONDO POST-LOGIN ═══ */
+(function initBg(){
+  const cv=document.getElementById('bgWarm'); if(!cv) return;
+  let W=window.innerWidth,H=window.innerHeight;
+  const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:false,alpha:true});
+  renderer.setSize(W,H,false); renderer.setPixelRatio(1);
+  renderer.setClearColor(0,0); renderer.toneMapping=THREE.ACESFilmicToneMapping;
+  const scene=new THREE.Scene();
+  const camera=new THREE.PerspectiveCamera(60,W/H,.1,100); camera.position.z=5;
+  const pmrem2=new THREE.PMREMGenerator(renderer);
+  scene.environment=pmrem2.fromScene(new RoomEnvironment()).texture;
+  scene.add(new THREE.AmbientLight(0x0a1828,.35));
+  const dl=new THREE.DirectionalLight(0x3366bb,.65); dl.position.set(2,3,1); scene.add(dl);
+  const bgObjs=[];
+  [{g:new THREE.BoxGeometry(.32,.42,.04),c:0x0284c7,p:[3.6,1.5,-3]},
+   {g:new THREE.CylinderGeometry(.08,.08,.7,16),c:0x059669,p:[-3.8,-1.2,-2]},
+   {g:new THREE.BoxGeometry(.22,.08,.22),c:0x0891b2,p:[3.2,-2,-3]},
+   {g:new THREE.BoxGeometry(.18,.48,.03),c:0x0369a1,p:[-3,1.8,-4]}]
+  .forEach(cfg=>{
+    const m=new THREE.Mesh(cfg.g,new THREE.MeshStandardMaterial({color:cfg.c,metalness:.55,roughness:.3,transparent:true,opacity:.20,envMapIntensity:1.2}));
+    m.position.set(...cfg.p); m.userData.off=Math.random()*Math.PI*2; scene.add(m); bgObjs.push(m);
+  });
+  const N=55,pp=new Float32Array(N*3);
+  for(let i=0;i<N;i++){pp[i*3]=(Math.random()-.5)*12;pp[i*3+1]=(Math.random()-.5)*9;pp[i*3+2]=(Math.random()-.5)*5-2;}
+  const pg=new THREE.BufferGeometry(); pg.setAttribute('position',new THREE.BufferAttribute(pp,3));
+  scene.add(new THREE.Points(pg,new THREE.PointsMaterial({size:.025,color:0x4499cc,transparent:true,opacity:.18})));
+  window.addEventListener('resize',()=>{W=window.innerWidth;H=window.innerHeight;renderer.setSize(W,H,false);camera.aspect=W/H;camera.updateProjectionMatrix();});
+  let t=0;
+  (function animate(){requestAnimationFrame(animate);t+=.004;bgObjs.forEach(o=>{o.rotation.x=t*.2+o.userData.off;o.rotation.y=t*.3;});renderer.render(scene,camera);})();
+})();
+</script>
+
+<!-- GSAP ScrollTrigger + Tilt keynote -->
+<script>
+(function(){
+  if(typeof gsap==='undefined') return;
+  gsap.registerPlugin(ScrollTrigger);
+  function initTilt(){
+    document.querySelectorAll('.step,.db-kpi,.db-box,.norma-card').forEach(el=>{
+      if(el.dataset.gt) return; el.dataset.gt='1';
+      el.addEventListener('mousemove',e=>{
+        const r=el.getBoundingClientRect();
+        const x=(e.clientX-r.left)/r.width-.5, y=(e.clientY-r.top)/r.height-.5;
+        gsap.to(el,{rotateX:-y*10,rotateY:x*10,translateZ:10,duration:.28,ease:'power2.out',overwrite:'auto',transformPerspective:1000});
+        el.style.background=`radial-gradient(circle at ${(x+.5)*100}% ${(y+.5)*100}%,rgba(125,211,252,.18) 0%,transparent 64%),var(--panel,#fff)`;
+        el.style.boxShadow=`${-x*22}px ${-y*22+16}px 44px rgba(2,80,160,.16),0 0 0 1px rgba(2,132,199,.1)`;
+      });
+      el.addEventListener('mouseleave',()=>{
+        gsap.to(el,{rotateX:0,rotateY:0,translateZ:0,duration:.85,ease:'elastic.out(1,.55)',overwrite:'auto'});
+        el.style.background=''; el.style.boxShadow='';
+      });
+    });
+  }
+  initTilt();
+  new MutationObserver(initTilt).observe(document.body,{childList:true,subtree:true});
+  function initScroll(){
+    ScrollTrigger.refresh();
+    const e='power3.out';
+    gsap.from('.step',{scrollTrigger:{trigger:'.step',start:'top 88%',toggleActions:'play none none none'},y:55,opacity:0,duration:.75,stagger:.13,ease:e,clearProps:'all'});
+    gsap.from('.db-kpi',{scrollTrigger:{trigger:'.db-kpi',start:'top 88%'},scale:.88,opacity:0,duration:.65,stagger:.09,ease:'back.out(1.6)',clearProps:'all'});
+    gsap.from('.norma-card',{scrollTrigger:{trigger:'.norma-card',start:'top 90%'},x:-28,opacity:0,duration:.6,stagger:.1,ease:'power2.out',clearProps:'all'});
+    gsap.from('.db-box',{scrollTrigger:{trigger:'.db-box',start:'top 88%'},y:30,opacity:0,duration:.6,stagger:.08,ease:'power2.out',clearProps:'all'});
+  }
+  ['doLogin','usarDemo'].forEach(fn=>{
+    const orig=window[fn]; if(!orig) return;
+    window[fn]=function(...a){const r=orig.apply(this,a);setTimeout(initScroll,750);return r;};
+  });
+})();
+</script>

@@ -1,0 +1,85 @@
+
+<!-- Loader -->
+<div id="gl-loader" style="position:fixed;inset:0;z-index:99998;background:#040e1c;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;pointer-events:none;">
+  <svg width="48" height="48" viewBox="0 0 48 48" fill="none" style="animation:_spin .85s linear infinite">
+    <circle cx="24" cy="24" r="20" stroke="rgba(2,132,199,.18)" stroke-width="3.5"/>
+    <path d="M24 4 A20 20 0 0 1 44 24" stroke="#0284c7" stroke-width="3.5" stroke-linecap="round"/>
+  </svg>
+  <span style="color:rgba(255,255,255,.45);font:11px/1 'Inter',monospace;letter-spacing:.18em">CARGANDO SISTEMA</span>
+  <style>@keyframes _spin{to{transform:rotate(360deg)}}</style>
+</div>
+<canvas id="bgWarm" style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+import { EffectComposer }  from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass }      from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { OutputPass }      from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/postprocessing/OutputPass.js';
+import { RoomEnvironment } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/environments/RoomEnvironment.js';
+
+const MOBILE = window.innerWidth < 768;
+
+function hideLoader() {
+  const el = document.getElementById('gl-loader');
+  if (!el) return;
+  el.style.transition = 'opacity .6s ease';
+  el.style.opacity = '0';
+  setTimeout(() => el.remove(), 700);
+}
+
+/* ═══ LOGIN SCENE — PBR Studio ═══ */
+(function initLogin() {
+  const cv  = document.getElementById('loginCanvas'); if (!cv) return;
+  const lft = document.querySelector('.lo-left');     if (!lft) return;
+  let W = lft.clientWidth || window.innerWidth * .58;
+  let H = lft.clientHeight || window.innerHeight;
+
+  const renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: !MOBILE, alpha: false });
+  renderer.setSize(W, H, false);
+  renderer.setPixelRatio(MOBILE ? 1 : Math.min(window.devicePixelRatio, 2));
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.shadowMap.enabled = !MOBILE;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x040e1c);
+  scene.fog = new THREE.FogExp2(0x040e1c, 0.055);
+
+  const camera = new THREE.PerspectiveCamera(48, W / H, 0.1, 100);
+  camera.position.set(0, 0, 6.8);
+
+  const pmrem  = new THREE.PMREMGenerator(renderer);
+  pmrem.compileEquirectangularShader();
+  const envMap = pmrem.fromScene(new RoomEnvironment(0.06), 0.04).texture;
+  scene.environment = envMap;
+
+  /* Luces estudio 3-point */
+  scene.add(new THREE.AmbientLight(0x06101e, 0.9));
+  const keyL = new THREE.DirectionalLight(0xfff5e8, 3.8);
+  keyL.position.set(-3.5, 5.5, 2.5);
+  if (!MOBILE) { keyL.castShadow = true; keyL.shadow.mapSize.set(1024,1024); keyL.shadow.radius = 5; }
+  scene.add(keyL);
+  const fillL = new THREE.DirectionalLight(0x4488ff, 2.0);
+  fillL.position.set(5, -1, 1); scene.add(fillL);
+  const rimL = new THREE.DirectionalLight(0x00cc88, 2.5);
+  rimL.position.set(0.5, -3, -4.5); scene.add(rimL);
+  const mLight = new THREE.PointLight(0x0284c7, 3.0, 11, 2);
+  mLight.position.set(0, 1, 4); scene.add(mLight);
+
+  /* Materiales PBR */
+  const matRed = new THREE.MeshStandardMaterial({ color:0xdc2626, metalness:.82, roughness:.14, envMapIntensity:2.2 });
+  const matBlue = new THREE.MeshStandardMaterial({ color:0x0284c7, metalness:.88, roughness:.10, envMapIntensity:2.4 });
+  const matSilver = new THREE.MeshStandardMaterial({ color:0xd0e8f5, metalness:.96, roughness:.05, envMapIntensity:2.8 });
+  const matPlastic = new THREE.MeshStandardMaterial({ color:0x08192e, metalness:.04, roughness:.6 });
+  const matGlassB = new THREE.MeshPhysicalMaterial({
+    color:0xaaccee, metalness:0, roughness:.02, transmission:.93,
+    thickness:.5, ior:1.52, reflectivity:.5, transparent:true, opacity:.88, envMapIntensity:2.2 });
+  const matGlassG = new THREE.MeshPhysicalMaterial({
+    color:0x34d399, metalness:0, roughness:.04, transmission:.86,
+    thickness:.4, ior:1.50, transparent:true, opacity:.88, envMapIntensity:1.9 });
